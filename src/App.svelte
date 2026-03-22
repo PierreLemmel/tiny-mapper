@@ -1,10 +1,11 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import SurfacePanel from "./components/Surfaces/SurfacePanel.svelte";
-    import SurfacesDisplay from "./components/Surfaces/SurfacesDisplay.svelte";
-    import { cn } from "./lib/core/utils";
     import { saveContentOnChange } from "./lib/stores/content";
-    import { saveUIOnChange } from "./lib/stores/user-interface";
+    import { globalUI, saveUIOnChange } from "./lib/stores/user-interface";
+    import TopMenuBar from "./components/Shared/TopMenuBar.svelte";
+    import MappingWindow from "./components/Windows/MappingWindow.svelte";
+    import OutputsWindow from "./components/Windows/OutputsWindow.svelte";
+    import SettingsWindow from "./components/Windows/SettingsWindow.svelte";
 
     onMount(() => {
         saveContentOnChange();
@@ -12,16 +13,16 @@
     })
 </script>
 
-<main class="h-dvh w-dvw bg-neutral-950 text-neutral-100">
-    <div class={cn(
-        "w-full h-full flex flex-row justify-around items-stretch",
-        ""
-    )}>
-        <div class={cn("min-w-[250px] max-w-lg")}>
-            <SurfacePanel />
-        </div>
-        <div class={cn("flex-3")}>
-            <SurfacesDisplay />
-        </div>
+<div class="bg-neutral-950 h-screen w-dvw flex flex-col">
+    <TopMenuBar tabs={["Mapping", "Outputs", "Settings"]} bind:activeTab={$globalUI.activeTab} />
+
+    <div class="flex-1 min-h-0">
+        {#if $globalUI.activeTab === 0}
+            <MappingWindow className="" />
+        {:else if $globalUI.activeTab === 1}
+            <OutputsWindow />
+        {:else if $globalUI.activeTab === 2}
+            <SettingsWindow />
+        {/if}
     </div>
-</main>
+</div>

@@ -1,7 +1,7 @@
 import { get } from "svelte/store";
 import { content } from "../stores/content";
 import type { BlendMode, Color, Position, Size } from "./mapping";
-import { generateUUID } from "three/src/math/MathUtils.js";
+import { createId } from "../core/utils";
 
 const DEFAULT_SIZE: Size = [100, 100]
 
@@ -65,7 +65,7 @@ function nextAvailableName(type: SurfaceType) {
 
 function createSurfaceBase(): Omit<SurfaceBase, "name"> {
     return {
-        id: generateUUID(),
+        id: createId(),
         enabled: true,
         opacity: 1,
         color: [1, 1, 1, 1],
@@ -116,5 +116,49 @@ export function createQuadSurface() {
 }
 
 export function createGroupSurface() {
-    console.log("Create group")
+    const name = nextAvailableName("Group")
+
+    const surface: GroupSurface = {
+        name,
+        type: "Group",
+        ...createSurfaceBase(),
+        children: []
+    }
+
+    const {
+        surfaces,
+        rootSurfaces,
+        ...contentRest
+    } = get(content)
+
+    const newSurfaces = {
+        ...surfaces,
+        [surface.id]: surface
+    }
+
+    const newRootSurfaces = [
+        ...rootSurfaces,
+        surface.id
+    ]
+
+    content.set({
+        ...contentRest,
+        surfaces: newSurfaces,
+        rootSurfaces: newRootSurfaces
+    })
+}
+
+export function updateSurface(id: string, values: Partial<Surface>) {
+    const { surfaces } = get(content);
+
+    if (!surfaces[id]) {
+        throw new Error(`Can't find surface with id '${id}'`)
+    }
+
+    const newSurfaces = structuredClone(surfaces);
+    const surface: Surface = newSurfaces[id]
+
+    
+    
+    newSurfaces[id] = surface;
 }

@@ -7,7 +7,7 @@ export type Content = {
     rootSurfaces: string[]
 }
 
-const STORAGE_KEY = 'SBM-CONTENT'
+const STORAGE_KEY = 'tm-mapping-content'
 
 const DEFAULT_CONTENT: Content = {
     surfaces: {},

@@ -1,36 +1,33 @@
 <script lang="ts">
+    import { dndzone } from 'svelte-dnd-action';
+    import { flip } from 'svelte/animate';
+
     import { cn } from "../../lib/core/utils";
-    import { content } from "../../lib/stores/content";
+    import { surfaceDisplayTree } from "./surface-tree";
+    import SurfaceTreeDisplayItem from "./SurfaceTreeDisplayItem.svelte";
 
     export let className: string|undefined = undefined;
 
-    const {
-        rootSurfaces,
-        surfaces
-    } = $content;
-
-    type DisplayItem = {
-        name: string;
-        indent: number;
-        enabled: boolean;
+    function handleDndConsider(e: Event) {
+        console.log("consider", e)
     }
 
-    const displayItems: DisplayItem[] = rootSurfaces
-        .map(id => {
-            const surface = surfaces[id]
-            return {
-                name: surface.name,
-                indent: 0,
-                enabled: surface.enabled
-            }
-        })
+    function handleDndFinalize(e: any) {
+        console.log("finalize", e)
+    }
 </script>
 
 <div class={cn(
-    "bg-purple-500",
+    "flex flex-col items-stretch justify-start gap-1.5 overflow-y-auto max-h-full",
     className
-)}>
-    <!-- {#each $content.rootSurfaces as }
-        
-    {/each} -->
+)}
+    use:dndzone={{ items: $surfaceDisplayTree, flipDurationMs: 150 }}
+    on:consider={handleDndConsider}
+    on:finalize={handleDndFinalize}
+>
+    {#each $surfaceDisplayTree as item (item.id)}
+    <div class="w-full flex flex-col items-stretch" animate:flip={{ duration: 150 }}>
+        <SurfaceTreeDisplayItem {item} />
+    </div>    
+    {/each}
 </div>

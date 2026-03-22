@@ -1,9 +1,11 @@
-import { generateUUID } from "three/src/math/MathUtils.js";
-
 export function cn(...classes: (string|boolean|undefined|null)[]): string {
     return classes.filter(Boolean).join(' ');
 }
 
 export function createId(): string {
-    return generateUUID()
+    return crypto.randomUUID();
+}
+
+export function clamp(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(value, max));
 }
