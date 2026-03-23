@@ -10,7 +10,7 @@
     let inputEl: HTMLInputElement;
     let editValue = value;
 
-    function startEditing() {
+    export function startEditing() {
         if (!editable) return;
         editing = true;
         editValue = value;
@@ -64,7 +64,7 @@
             !editable && "cursor-default",
             className
         )}
-        on:dblclick={startEditing}
+        on:dblclick|stopPropagation={startEditing}
         title={editable ? "Double-click to rename" : undefined}
     >
         {value}

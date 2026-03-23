@@ -4,9 +4,12 @@
 
     import { cn } from "../../lib/core/utils";
     import { content } from "../../lib/stores/content";
+    import { surfaceUI } from "../../lib/stores/user-interface";
     import {
         applyFinalize,
         clearMultiDrag,
+        clearSelection,
+        renameRequestId,
         startMultiDragIfNeeded,
         type SurfaceDisplayTreeItem,
     } from "./surface-tree";
@@ -46,7 +49,27 @@
 
         clearMultiDrag();
     }
+
+    function handleBackgroundClick() {
+        if (!isDragging) {
+            clearSelection();
+        }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+        if (e.key === "Escape") {
+            clearSelection();
+        } else if (e.key === "F2") {
+            const sel = $surfaceUI.selectedSurfaces;
+            if (sel.length === 1) {
+                e.preventDefault();
+                $renameRequestId = sel[0];
+            }
+        }
+    }
 </script>
+
+<svelte:window on:keydown={handleKeyDown} />
 
 <div
     class={cn(
@@ -62,6 +85,10 @@
     }}
     on:consider={handleDndConsider}
     on:finalize={handleDndFinalize}
+    on:click={handleBackgroundClick}
+    on:keydown={handleKeyDown}
+    role="tree"
+    tabindex="-1"
 >
     {#each items as item (item.id)}
     <div class="w-full flex flex-col items-stretch" animate:flip={{ duration: FLIP_DURATION_MS }}>

@@ -14,6 +14,7 @@
     aria-checked={visible}
     aria-disabled={disabled}
     class={cn(
+        "cursor-pointer",
         "transition-all duration-150",
         "inline-flex items-center justify-center",
         "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500",
@@ -23,13 +24,11 @@
     )}
     on:click={() => { if (!disabled) visible = !visible; }}
 >
-    {#if visible}
-        <span class="inline-flex size-5 shrink-0 [&_svg]:size-full" aria-hidden="true">
-            <VisibleIcon />
-        </span>
-    {:else}
-        <span class="inline-flex size-5 shrink-0 [&_svg]:size-full" aria-hidden="true">
-            <InvisibleIcon />
-        </span>
-    {/if}
+    <span class="inline-flex size-4.5 shrink-0 [&_svg]:size-full" aria-hidden="true">
+        {#if visible}
+                <VisibleIcon />
+        {:else}
+                <InvisibleIcon />
+        {/if}
+    </span>
 </button>

@@ -13,12 +13,5 @@
     stroke-width={strokeWidth}
     fill={fillColor}
 >
-    <!-- <rect
-        x="3"
-        y="3"
-        width="18"
-        height="18"
-        rx="2"
-    /> -->
     <path stroke-linecap="round" stroke-linejoin="round" d="M6 5 24 2 19 20 0 24 Z" />
 </svg>

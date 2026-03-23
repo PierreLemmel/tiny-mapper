@@ -9,6 +9,7 @@
 
     $: classes = cn(
         "inline-flex items-center justify-center gap-1.5",
+        "cursor-pointer",
 
         size === 'small' && "size-4 text-[0.6875rem]",
         size === 'medium' && "size-6 text-[0.75rem]",

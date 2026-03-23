@@ -10,17 +10,19 @@ export type SurfaceDisplayTreeItem = {
 }
 
 export const activeDragCompanions = writable<Set<string>>(new Set());
+export const renameRequestId = writable<string | null>(null);
 
 let selectionAnchor: string | null = null;
 
 function getFlatVisualOrder(): string[] {
     const c = get(content);
+    const collapsed = new Set(get(surfaceUI).collapsedGroups);
     const result: string[] = [];
 
     function walk(id: string) {
         result.push(id);
         const surface = c.surfaces[id];
-        if (surface && surface.type === "Group") {
+        if (surface && surface.type === "Group" && !collapsed.has(id)) {
             for (const childId of surface.children) {
                 walk(childId);
             }
@@ -59,10 +61,16 @@ export function selectSurface(id: string, modifiers: PointerModifiers) {
         surfaceUI.update(ui => ({
             ...ui,
             selectedSurfaces: ui.selectedSurfaces.includes(id)
-                ? ui.selectedSurfaces
+                ? ui.selectedSurfaces.filter(s => s !== id)
                 : [...ui.selectedSurfaces, id],
         }));
         selectionAnchor = id;
+        return;
+    }
+
+    const current = get(surfaceUI).selectedSurfaces;
+    if (current.length === 1 && current[0] === id) {
+        clearSelection();
         return;
     }
 
@@ -79,6 +87,15 @@ export function clearSelection() {
         selectedSurfaces: [],
     }));
     selectionAnchor = null;
+}
+
+export function toggleGroupCollapsed(id: string) {
+    surfaceUI.update(ui => {
+        const collapsed = ui.collapsedGroups.includes(id)
+            ? ui.collapsedGroups.filter(g => g !== id)
+            : [...ui.collapsedGroups, id];
+        return { ...ui, collapsedGroups: collapsed };
+    });
 }
 
 function getParentMap(): Map<string, string | null> {

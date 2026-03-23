@@ -13,6 +13,7 @@ export type SurfaceUIData = {
     rightPanelSize: number
     leftEditorSize: number
     selectedSurfaces: string[]
+    collapsedGroups: string[]
 }
 
 const DEFAULT_GLOBAL_UI_DATA: GlobalUIData = {
@@ -21,6 +22,7 @@ const DEFAULT_GLOBAL_UI_DATA: GlobalUIData = {
 
 const DEFAULT_SURFACE_UI_DATA: SurfaceUIData = {
     selectedSurfaces: [],
+    collapsedGroups: [],
     leftPanelSize: 260,
     rightPanelSize: 260,
     leftEditorSize: 450,

@@ -10,35 +10,48 @@
     import { longpress, type PointerModifiers } from "../../lib/ui/longpress-action";
     import NameDisplay from "../Shared/NameDisplay.svelte";
     import VisibleCheckbox from "../Shared/VisibleCheckbox.svelte";
+
     import {
         activeDragCompanions,
         applyFinalize,
         clearMultiDrag,
+        renameRequestId,
         startMultiDragIfNeeded,
         selectSurface,
+        toggleGroupCollapsed,
         type SurfaceDisplayTreeItem,
     } from "./surface-tree";
     import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../lib/ui/animations';
+    import ChevronIcon from '../../icons/ChevronIcon.svelte';
 
     export let item: SurfaceDisplayTreeItem;
     export let indent: number = 0;
-    export let isParentDisabled: boolean = false;
-
-    const INDENT_SIZE = 10;
+    export let treeDisabled: boolean = false;
 
     $: id = item.id;
     $: surface = $content.surfaces[id];
     $: type = surface?.type;
     $: selected = $surfaceUI.selectedSurfaces.includes(id);
     $: isDragCompanion = $activeDragCompanions.has(id);
+    $: collapsed = type === "Group" && $surfaceUI.collapsedGroups.includes(id);
+
+    $: disabled = treeDisabled || !surface?.enabled;
 
     $: iconClasses = cn(
-        "size-6 stroke-none fill-current",
+        "size-6",
         "transition-all duration-150",
-        surface?.enabled
+        "stroke-2",
+        !disabled
             ? (selected ? "text-primary-400" : "text-secondary-400")
             : "text-neutral-400",
     );
+
+    let nameDisplay: NameDisplay;
+
+    $: if ($renameRequestId === id && nameDisplay) {
+        nameDisplay.startEditing();
+        $renameRequestId = null;
+    }
 
     let childItems: SurfaceDisplayTreeItem[] = [];
     let isChildDragging = false;
@@ -76,6 +89,11 @@
         if (!surface) return;
         selectSurface(id, modifiers);
     }
+
+    function handleDblClick(e: MouseEvent) {
+        if (!surface) return;
+        selectSurface(id, { ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, metaKey: e.metaKey });
+    }
 </script>
 
 <div
@@ -85,48 +103,77 @@
         isDragCompanion && "opacity-25",
     )}
     use:longpress={{ onLongPress: handleLongPress }}
+    on:dblclick|stopPropagation={handleDblClick}
+    on:click|stopPropagation
+    on:keydown|stopPropagation
+    role="treeitem"
+    aria-selected={selected}
+    tabindex="-1"
 >
     {#if surface}
-    <div
-        class="flex flex-row items-center justify-start"
+    <div class={cn(
+        "flex flex-row items-center justify-start",
+        type === "Group" && "-ml-2"
+    )}
     >
         {#if type === "Group"}
+            {#if childItems.length > 0}
+            <button
+                class="flex items-center justify-center size-4 shrink-0 text-neutral-400 hover:text-neutral-200 transition-colors cursor-pointer"
+                on:click|stopPropagation={() => toggleGroupCollapsed(id)}
+                on:dblclick|stopPropagation={() => {}}
+            >
+                <ChevronIcon className={cn(
+                    "size-3 transition-transform duration-150",
+                    collapsed && "-rotate-90"
+                )} />
+            </button>
+            {/if}
             <GroupIcon className={iconClasses} />
         {:else if type === "Quad"}
-            <QuadIcon className={iconClasses} strokeWidth={1.2} fillColor="none" />
+            <QuadIcon className={cn(iconClasses, "p-0.5")} strokeWidth={0.1} fillColor="none" />
         {/if}
         <NameDisplay
+            bind:this={nameDisplay}
             bind:value={$content.surfaces[id].name}
-            className={cn(surface?.enabled ? "text-neutral-100" : "text-neutral-300")}
+            className={cn(
+                disabled ? "text-neutral-400" : (selected ? "text-primary-200" : "text-neutral-100")
+            )}
         />
     </div>
 
     <div class="flex flex-row items-center justify-end">
-        <VisibleCheckbox bind:visible={$content.surfaces[id].enabled} />
+        <VisibleCheckbox bind:visible={$content.surfaces[id].enabled} className="py-0.5" />
     </div>
     {/if}
 </div>
 
 {#if surface && type === "Group"}
-<div
-    class={cn(
-        "flex flex-col items-stretch",
-        "pl-3 border-l border-neutral-700",
-    )}
-    use:dndzone={{
-        items: childItems,
-        flipDurationMs: FLIP_DURATION_MS,
-        type: SURFACES_DND_TYPE,
-        dropTargetClasses: SURFACES_DND_TARGET_CLASSES,
-        dropTargetStyle: SURFACES_DND_TARGET_STYLE
-    }}
-    on:consider={handleChildConsider}
-    on:finalize={handleChildFinalize}
->
-    {#each childItems as child (child.id)}
-    <div class="w-full flex flex-col items-stretch" animate:flip={{ duration: FLIP_DURATION_MS }}>
-        <svelte:self item={child} indent={indent + 1} />
+<div class={cn(
+    "transition-all duration-300 ease-linear",
+    "overflow-hidden",
+    collapsed ? "h-0" : "h-auto"
+)}>
+    <div
+        class={cn(
+            "flex flex-col items-stretch",
+            "pl-4 border-l border-neutral-700",
+        )}
+        use:dndzone={{
+            items: childItems,
+            flipDurationMs: FLIP_DURATION_MS,
+            type: SURFACES_DND_TYPE,
+            dropTargetClasses: SURFACES_DND_TARGET_CLASSES,
+            dropTargetStyle: SURFACES_DND_TARGET_STYLE
+        }}
+        on:consider={handleChildConsider}
+        on:finalize={handleChildFinalize}
+    >
+        {#each childItems as child (child.id)}
+        <div class="w-full flex flex-col items-stretch" animate:flip={{ duration: FLIP_DURATION_MS }}>
+            <svelte:self item={child} indent={indent + 1} treeDisabled={disabled} />
+        </div>
+        {/each}
     </div>
-    {/each}
 </div>
 {/if}
