@@ -10,16 +10,15 @@
 <svg
     class={cn("stroke-current", className)}
     viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden="true"
     stroke-width={strokeWidth}
     fill={fillColor}
 >
-    <rect
+    <!-- <rect
         x="3"
         y="3"
         width="18"
         height="18"
         rx="2"
-    />
+    /> -->
+    <path stroke-linecap="round" stroke-linejoin="round" d="M6 5 24 2 19 20 0 24 Z" />
 </svg>

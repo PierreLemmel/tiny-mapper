@@ -2,8 +2,6 @@
     import { cn } from "../lib/core/utils";
 
     export let className: string | undefined = undefined;
-    export let strokeWidth: number = 1;
-    export let fillColor: string = "none";
 </script>
 
 <svg

@@ -5,6 +5,8 @@
     import { createGroupSurface, createQuadSurface } from "../../lib/logic/surfaces";
     import { cn } from "../../lib/core/utils";
     import SurfaceTreeDisplay from "./SurfaceTreeDisplay.svelte";
+    import { onMount } from "svelte";
+    import { clearSelection } from "./surface-tree";
 
     export let className: string | undefined = undefined;
 </script>
@@ -14,7 +16,8 @@
     "flex flex-col items-stretch justify-center",
     "gap-2 pt-1.5",
     className
-)}>
+)}
+>
     <div class="flex flex-row flex-wrap gap-2 items-center justify-center my-3">
         <IconButton variant="primary" onClick={createQuadSurface} size="large">
             <span class="inline-flex size-6 shrink-0 [&_svg]:size-full" aria-hidden="true">
