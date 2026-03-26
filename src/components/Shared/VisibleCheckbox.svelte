@@ -26,9 +26,9 @@
 >
     <span class="inline-flex size-4.5 shrink-0 [&_svg]:size-full" aria-hidden="true">
         {#if visible}
-                <VisibleIcon />
+            <VisibleIcon />
         {:else}
-                <InvisibleIcon />
+            <InvisibleIcon />
         {/if}
     </span>
 </button>

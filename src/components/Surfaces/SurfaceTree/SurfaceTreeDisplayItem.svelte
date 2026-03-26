@@ -2,14 +2,14 @@
     import { dndzone, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
 
-    import GroupIcon from "../../icons/GroupIcon.svelte";
-    import QuadIcon from "../../icons/QuadIcon.svelte";
-    import { cn } from "../../lib/core/utils";
-    import { content } from "../../lib/stores/content";
-    import { surfaceUI } from "../../lib/stores/user-interface";
-    import { longpress, type PointerModifiers } from "../../lib/ui/longpress-action";
-    import NameDisplay from "../Shared/NameDisplay.svelte";
-    import VisibleCheckbox from "../Shared/VisibleCheckbox.svelte";
+    import GroupIcon from "../../../icons/GroupIcon.svelte";
+    import QuadIcon from "../../../icons/QuadIcon.svelte";
+    import { cn } from "../../../lib/core/utils";
+    import { content } from "../../../lib/stores/content";
+    import { surfaceUI } from "../../../lib/stores/user-interface";
+    import { longpress, type PointerModifiers } from "../../../lib/ui/longpress-action";
+    import NameDisplay from "../../Shared/NameDisplay.svelte";
+    import VisibleCheckbox from "../../Shared/VisibleCheckbox.svelte";
 
     import {
         activeDragCompanions,
@@ -21,8 +21,8 @@
         toggleGroupCollapsed,
         type SurfaceDisplayTreeItem,
     } from "./surface-tree";
-    import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../lib/ui/animations';
-    import ChevronIcon from '../../icons/ChevronIcon.svelte';
+    import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../../lib/ui/animations';
+    import ChevronIcon from '../../../icons/ChevronIcon.svelte';
 
     export let item: SurfaceDisplayTreeItem;
     export let indent: number = 0;
@@ -40,7 +40,6 @@
     $: iconClasses = cn(
         "size-6",
         "transition-all duration-150",
-        "stroke-2",
         !disabled
             ? (selected ? "text-primary-400" : "text-secondary-400")
             : "text-neutral-400",
@@ -113,7 +112,7 @@
     {#if surface}
     <div class={cn(
         "flex flex-row items-center justify-start",
-        type === "Group" && "-ml-2"
+        (type === "Group" && childItems.length > 0) && "-ml-2"
     )}
     >
         {#if type === "Group"}
@@ -129,21 +128,25 @@
                 )} />
             </button>
             {/if}
+
             <GroupIcon className={iconClasses} />
         {:else if type === "Quad"}
-            <QuadIcon className={cn(iconClasses, "p-0.5")} strokeWidth={0.1} fillColor="none" />
+            <QuadIcon className={cn(iconClasses, "p-0.5 stroke-2")} fillColor="none" />
         {/if}
         <NameDisplay
             bind:this={nameDisplay}
             bind:value={$content.surfaces[id].name}
             className={cn(
-                disabled ? "text-neutral-400" : (selected ? "text-primary-200" : "text-neutral-100")
+                disabled ? "text-neutral-400" : (selected ? "text-primary-200" : "text-neutral-200")
             )}
         />
     </div>
 
     <div class="flex flex-row items-center justify-end">
-        <VisibleCheckbox bind:visible={$content.surfaces[id].enabled} className="py-0.5" />
+        <VisibleCheckbox bind:visible={$content.surfaces[id].enabled} className={cn(
+            "py-0.5",
+            treeDisabled && "opacity-65"
+        )} />
     </div>
     {/if}
 </div>

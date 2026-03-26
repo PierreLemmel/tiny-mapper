@@ -4,9 +4,9 @@
     import GroupIcon from "../../icons/GroupIcon.svelte";
     import { createGroupSurface, createQuadSurface } from "../../lib/logic/surfaces";
     import { cn } from "../../lib/core/utils";
-    import SurfaceTreeDisplay from "./SurfaceTreeDisplay.svelte";
+    import SurfaceTreeDisplay from "./SurfaceTree/SurfaceTreeDisplay.svelte";
     import { onMount } from "svelte";
-    import { clearSelection } from "./surface-tree";
+    import { clearSelection } from "./SurfaceTree/surface-tree";
 
     export let className: string | undefined = undefined;
 </script>
@@ -26,7 +26,7 @@
         </IconButton>
         <IconButton variant="primary" onClick={createGroupSurface} size="large">
             <span class="inline-flex size-6 shrink-0 [&_svg]:size-full" aria-hidden="true">
-                <GroupIcon />
+                <GroupIcon className="stroke-[1px]" />
             </span>
         </IconButton>
     </div>

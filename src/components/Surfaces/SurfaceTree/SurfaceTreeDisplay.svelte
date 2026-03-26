@@ -2,19 +2,20 @@
     import { dndzone, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
 
-    import { cn } from "../../lib/core/utils";
-    import { content } from "../../lib/stores/content";
-    import { surfaceUI } from "../../lib/stores/user-interface";
+    import { cn } from "../../../lib/core/utils";
+    import { content } from "../../../lib/stores/content";
+    import { surfaceUI } from "../../../lib/stores/user-interface";
     import {
         applyFinalize,
         clearMultiDrag,
         clearSelection,
+        deleteSelectedSurfaces,
         renameRequestId,
         startMultiDragIfNeeded,
         type SurfaceDisplayTreeItem,
     } from "./surface-tree";
     import SurfaceTreeDisplayItem from "./SurfaceTreeDisplayItem.svelte";
-    import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../lib/ui/animations';
+    import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../../lib/ui/animations';
 
     export let className: string | undefined = undefined;
 
@@ -57,6 +58,9 @@
     }
 
     function handleKeyDown(e: KeyboardEvent) {
+        const target = e.target as HTMLElement;
+        const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+
         if (e.key === "Escape") {
             clearSelection();
         } else if (e.key === "F2") {
@@ -65,6 +69,10 @@
                 e.preventDefault();
                 $renameRequestId = sel[0];
             }
+        } else if ((e.key === "Delete" || e.key === "Backspace") && !isEditing) {
+
+            e.preventDefault();
+            deleteSelectedSurfaces();
         }
     }
 </script>

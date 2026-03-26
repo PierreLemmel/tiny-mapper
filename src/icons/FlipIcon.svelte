@@ -1,5 +1,6 @@
 <script lang="ts">
     export let className: string | undefined = undefined;
+    export let style: string | undefined = undefined;
 </script>
 
 <svg
@@ -11,6 +12,7 @@
     stroke-linecap="round"
     stroke-linejoin="round"
     aria-hidden="true"
+    style={style}
 >
-    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+    <path d="M6 4h10M6 4v16M6 4L6 4M6 12h7" />
 </svg>

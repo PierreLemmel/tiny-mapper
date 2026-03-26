@@ -12,5 +12,6 @@
     stroke-linejoin="round"
     aria-hidden="true"
 >
-    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+    <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <path d="M15 5l4 4" />
 </svg>

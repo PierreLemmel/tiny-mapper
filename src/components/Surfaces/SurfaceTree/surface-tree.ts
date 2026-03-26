@@ -1,8 +1,8 @@
 import { get, writable } from "svelte/store";
 import { TRIGGERS } from "svelte-dnd-action";
-import { content } from "../../lib/stores/content";
-import { surfaceUI } from "../../lib/stores/user-interface";
-import type { PointerModifiers } from "../../lib/ui/longpress-action";
+import { content } from "../../../lib/stores/content";
+import { surfaceUI } from "../../../lib/stores/user-interface";
+import type { PointerModifiers } from "../../../lib/ui/longpress-action";
 
 export type SurfaceDisplayTreeItem = {
     id: string;
@@ -129,6 +129,56 @@ function getTopLevelSelected(selected: string[]): string[] {
         }
         return true;
     });
+}
+
+export function deleteSelectedSurfaces() {
+    const selected = get(surfaceUI).selectedSurfaces;
+    if (selected.length === 0) return;
+
+    const c = get(content);
+    const topLevel = getTopLevelSelected(selected);
+
+    const toDelete = new Set<string>();
+
+    function collectDescendants(id: string) {
+        toDelete.add(id);
+        const surface = c.surfaces[id];
+        if (surface && surface.type === "Group") {
+            for (const childId of surface.children) {
+                collectDescendants(childId);
+            }
+        }
+    }
+
+    for (const id of topLevel) {
+        collectDescendants(id);
+    }
+
+    content.update(c => {
+        const next = structuredClone(c);
+
+        for (const id of toDelete) {
+            delete next.surfaces[id];
+        }
+
+        next.rootSurfaces = next.rootSurfaces.filter(id => !toDelete.has(id));
+
+        for (const surface of Object.values(next.surfaces)) {
+            if (surface.type === "Group") {
+                surface.children = surface.children.filter(id => !toDelete.has(id));
+            }
+        }
+
+        return next;
+    });
+
+    surfaceUI.update(ui => ({
+        ...ui,
+        selectedSurfaces: [],
+        collapsedGroups: ui.collapsedGroups.filter(id => !toDelete.has(id)),
+    }));
+
+    selectionAnchor = null;
 }
 
 export function startMultiDragIfNeeded(draggedId: string) {

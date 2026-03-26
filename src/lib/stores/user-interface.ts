@@ -14,6 +14,32 @@ export type SurfaceUIData = {
     leftEditorSize: number
     selectedSurfaces: string[]
     collapsedGroups: string[]
+
+    baseProperties : {
+        open: boolean;
+        colorOpen: boolean;
+        colorColorMode: "hsv" | "rgb" | "hex";
+    }
+
+    transform: {
+        open: boolean;
+    }
+
+    geometry: {
+        open: boolean;
+    }
+
+    effects: {
+        open: boolean
+    }
+
+    input: {
+        open: boolean
+    }
+
+    material: {
+        open: boolean
+    }
 }
 
 const DEFAULT_GLOBAL_UI_DATA: GlobalUIData = {
@@ -26,6 +52,27 @@ const DEFAULT_SURFACE_UI_DATA: SurfaceUIData = {
     leftPanelSize: 260,
     rightPanelSize: 260,
     leftEditorSize: 450,
+
+    baseProperties: {
+        open: true,
+        colorOpen: false,
+        colorColorMode: "hsv",
+    },
+    transform: {
+        open: false,
+    },
+    geometry: {
+        open: false,
+    },
+    effects: {
+        open: false,
+    },
+    input: {
+        open: false,
+    },
+    material: {
+        open: false,
+    },
 }
 
 export const globalUI = writable<GlobalUIData>(

@@ -1,13 +1,14 @@
 import { get } from "svelte/store";
 import { content } from "../stores/content";
-import type { BlendMode, Color, Position, Size } from "./mapping";
+import type { BlendMode, Position, Scale, Size, SurfaceFlip } from "./mapping";
+import type { RawColor } from "../core/color";
 import { createId } from "../core/utils";
 
 const DEFAULT_SIZE: Size = [100, 100]
 
-export type SurfaceOutput = {
+export type SurfaceTransform = {
     position: Position;
-    size: Size;
+    scale: Scale;
     rotation: number;
 }
 
@@ -16,8 +17,11 @@ type SurfaceBase = {
     enabled: boolean;
     name: string;
     opacity: number;
-    color: Color;
+    color: RawColor;
+    flip: SurfaceFlip;
     blendMode: BlendMode;
+    feathering: number;
+    transform: SurfaceTransform;
 }
 
 export type SurfaceType = "Group"|"Quad"
@@ -25,7 +29,6 @@ export type SurfaceType = "Group"|"Quad"
 type SurfaceData<T extends SurfaceType, D> = { type: T } & SurfaceBase & D
 
 export type QuadSurface = SurfaceData<"Quad", {
-    output: SurfaceOutput
 }>
 
 export type GroupSurface = SurfaceData<"Group", {
@@ -69,14 +72,17 @@ function createSurfaceBase(): Omit<SurfaceBase, "name"> {
         enabled: true,
         opacity: 1,
         color: [1, 1, 1, 1],
-        blendMode: "Over"
+        flip: [false, false],
+        blendMode: "Over",
+        feathering: 0,
+        transform: createDefaultSurfaceTransform()
     }
 }
 
-function createDefaultSurfaceOutput(): SurfaceOutput {
+function createDefaultSurfaceTransform(): SurfaceTransform {
     return {
         position: [0, 0],
-        size: [...DEFAULT_SIZE],
+        scale: [...DEFAULT_SIZE],
         rotation: 0
     }
 }
@@ -89,7 +95,7 @@ export function createQuadSurface() {
         name,
         type: "Quad",
         ...createSurfaceBase(),
-        output: createDefaultSurfaceOutput()
+        transform: createDefaultSurfaceTransform()
     }
 
     const {

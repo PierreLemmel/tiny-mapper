@@ -1,31 +1,44 @@
 <script lang="ts">
-    import { cn } from "../../lib/core/utils";
+    import { cn, inverseLerp } from "../../lib/core/utils";
 
     export let label: string = "";
     export let value: number = 0;
-    export let min: number = 0;
-    export let max: number = 100;
-    export let step: number = 0.1;
-    export let unit: string = "";
     export let color: 'primary' | 'secondary' = 'secondary';
     export let className: string | undefined = undefined;
 
-    $: percentage = ((value - min) / (max - min)) * 100;
-    $: displayValue = Number.isInteger(value) && Number.isInteger(step)
-        ? value.toString()
-        : value.toFixed(1);
+    export let options: {
+        type: 'percentage';
+        precision?: number;
+    } | {
+        type: 'value';
+        min: number;
+        max: number;
+        step?: number;
+        unit?: string;
+    }
+
+    $: min = options.type === 'percentage' ? 0 : options.min;
+    $: max = options.type === 'percentage' ? 1 : options.max;
+    $: step = options.type === 'percentage' ? 0.001 : options.step;
+    $: unit = options.type === 'percentage' ? '%' : options.unit;
+
+    $: sliderPercentage = inverseLerp(value, min, max) * 100;
+    $: displayValue = options.type === 'percentage' ? 100 * value : value;
+    $: displayValueStr = options.type === 'percentage' ? displayValue.toFixed(options.precision ?? 1) : (Number.isInteger(displayValue) && Number.isInteger(step)
+        ? displayValue.toString()
+        : displayValue.toFixed(1));
 </script>
 
 <div class={cn("flex flex-col gap-1.5 py-1", className)}>
     <div class="flex items-center justify-between">
-        <span class="text-[0.6875rem] font-medium tracking-widest uppercase text-neutral-400">
+        <span class="text-[0.6875rem] font-medium tracking-widest uppercase text-neutral-350">
             {label}
         </span>
         <span class={cn(
             "text-[0.6875rem] font-medium tabular-nums",
             color === 'secondary' ? 'text-secondary-500' : 'text-primary-400'
         )}>
-            {displayValue}{unit}
+            {displayValueStr}{unit}
         </span>
     </div>
     <div class="relative h-1 w-full rounded-sm bg-black group">
@@ -34,7 +47,7 @@
                 "absolute inset-y-0 left-0 rounded-sm",
                 color === 'secondary' ? 'bg-secondary-500' : 'bg-primary-400'
             )}
-            style="width: {percentage}%"
+            style="width: {sliderPercentage}%"
         ></div>
         <input
             type="range"
