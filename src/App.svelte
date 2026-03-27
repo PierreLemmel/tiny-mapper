@@ -6,10 +6,12 @@
     import MappingWindow from "./components/Windows/MappingWindow.svelte";
     import OutputsWindow from "./components/Windows/OutputsWindow.svelte";
     import SettingsWindow from "./components/Windows/SettingsWindow.svelte";
+    import { saveMainRenderingOnChange } from "./lib/stores/rendering";
 
     onMount(() => {
         saveContentOnChange();
         saveUIOnChange();
+        saveMainRenderingOnChange();
     })
 </script>
 

@@ -5,6 +5,7 @@
     import { cn } from "../../lib/core/utils";
     import ColorPicker from "./ColorPicker.svelte";
     import type { ColorPickerMode } from "./ColorPicker.svelte";
+    import Toggle from "./Toggle.svelte";
 
     export let title: string = "";
 
@@ -31,18 +32,11 @@
                 on:click|stopPropagation={() => open = !open}
                 aria-label="Pick Color"
             ></button>
-            <button
-                class={cn(
-                    "flex items-center justify-center gap-1 rounded-sm",
-                    "size-6 shrink-0 p-1 transition-colors cursor-pointer",
-                    open ? "text-neutral-200 bg-primary-400" : "text-neutral-200 bg-neutral-600/70"
-                )}
-                on:click|stopPropagation={() => open = !open}
-            >
+            <Toggle bind:value={open} label="Open" type="primary">
                 <EditIcon className={cn(
                     "size-full transition-all duration-150",
                 )} />
-            </button>
+            </Toggle>
         </div>
     </div>
     {#if open}

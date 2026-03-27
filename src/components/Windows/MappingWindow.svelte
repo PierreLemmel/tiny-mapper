@@ -1,44 +1,48 @@
 <script lang="ts">
     import SplitPanels from "../Shared/SplitPanels.svelte";
-    import { surfaceUI } from "../../lib/stores/user-interface";
-    import SurfaceEditor from "../Surfaces/SurfaceEditor.svelte";
-    import SurfacesDisplay from "../Surfaces/SurfacesDisplay.svelte";
+    import { mappingUI } from "../../lib/stores/user-interface";
     import { cn } from "../../lib/core/utils";
+    import EditViewPanel from "../EditView/EditViewPanel.svelte";
+    import LibraryPanel from "../Library/LibraryPanel.svelte";
+    import SurfacesPanel from "../Surfaces/SurfacesPanel.svelte";
 
     export let className: string|undefined = undefined;
 </script>
 
+{#if $mappingUI.leftPanelOpen}
 <SplitPanels
     direction="horizontal" applySizeTo="first"
-    bind:size={$surfaceUI.leftPanelSize}
+    bind:size={$mappingUI.leftPanelSize}
     minSize={180} maxSize={500}
     className={cn("h-full", className)}
 >
-    <SplitPanels slot="first"
-        direction="vertical" applySizeTo="second"
-        bind:size={$surfaceUI.leftEditorSize}
-        minSize={180} maxSize={500}
-        className="w-full h-full"
-    >
-        <SurfacesDisplay slot="first" />
-        <SurfaceEditor slot="second" />
-    </SplitPanels>
-
-    <SplitPanels slot="second"
-        direction="horizontal" applySizeTo="second"
-        bind:size={$surfaceUI.rightPanelSize}
-        minSize={180} maxSize={500}
-        className="w-full h-full"
-    >
-        <div slot="first">
-            <div>
-                <h1>SECOND</h1>
-            </div>
-        </div>
-        <div slot="second">
-            <div>
-                <h1>THIRD</h1>
-            </div>
-        </div>
-    </SplitPanels>
+    <SurfacesPanel slot="first" className="w-full h-full" />
+    <div slot="second" class="w-full h-full">
+        {#if $mappingUI.rightPanelOpen}
+        <SplitPanels
+            direction="horizontal" applySizeTo="second"
+            bind:size={$mappingUI.rightPanelSize}
+            minSize={180} maxSize={500}
+            className={cn("h-full", className)}
+        >
+            <EditViewPanel slot="first" />
+            <LibraryPanel slot="second" />
+        </SplitPanels>
+        {:else}
+        <EditViewPanel />
+        {/if}
+    </div>
 </SplitPanels>
+{:else if $mappingUI.rightPanelOpen}
+<SplitPanels
+    direction="horizontal" applySizeTo="second"
+    bind:size={$mappingUI.rightPanelSize}
+    minSize={180} maxSize={500}
+    className={cn("h-full", className)}
+>
+    <EditViewPanel slot="first" />
+    <LibraryPanel slot="second" />
+</SplitPanels>
+{:else}
+<EditViewPanel />
+{/if}
