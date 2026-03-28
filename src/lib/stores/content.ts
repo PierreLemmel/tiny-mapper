@@ -5,11 +5,11 @@ import { load, saveOnChange } from "../core/storage";
 const STORAGE_KEY_SURFACES = 'tm-surfaces'
 const STORAGE_KEY_ROOT_SURFACES = 'tm-root-surfaces'
 
-export type SurfaceData = {
+export type SurfacesMap = {
     [key: string]: Surface
 }
 
-export const surfaces = writable<SurfaceData>({})
+export const surfaces = writable<SurfacesMap>({})
 export const rootSurfaces = writable<string[]>([])
 
 export async function initContentStores() {
