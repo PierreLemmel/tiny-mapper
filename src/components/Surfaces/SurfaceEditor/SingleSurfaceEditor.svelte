@@ -6,7 +6,6 @@
     import { eventStore } from "../../../lib/events/event-store";
     import { surfaceUI } from "../../../lib/stores/user-interface";
     import BlendModeEditor from "../../Shared/BlendModeEditor.svelte";
-    import ColorPicker from "../../Shared/ColorPicker.svelte";
     import Foldable from "../../Shared/Foldable.svelte";
     import FoldableColorPicker from "../../Shared/FoldableColorPicker.svelte";
     import HorizontalSeparator from "../../Shared/HorizontalSeparator.svelte";

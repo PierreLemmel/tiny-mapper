@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import type { QuadSurface } from "../logic/surfaces";
-import { type SurfacesMap } from "../stores/content";
 
 import surfaceVert from "../../shaders/surface.vert?raw";
 import surfaceFrag from "../../shaders/surface.frag?raw";
@@ -27,7 +26,7 @@ export class MainScene {
         this.scene = new THREE.Scene();
     }
 
-    public initializeScene(surfaces: SurfacesMap) {
+    public initializeScene() {
         if (this.initialized) {
             console.warn("Scene already initialized");
             return;
@@ -35,15 +34,7 @@ export class MainScene {
 
         this.initialized = true;
 
-        console.log("initializing scene", surfaces);
-
-        for (const [id, surface] of Object.entries(surfaces)) {
-            if (surface.type !== "Quad") {
-                continue;
-            }
-            
-            this.createQuadSurface(surface);
-        }
+        console.log("initializing scene");
     }
 
     private createQuadSurface(surface: QuadSurface) {

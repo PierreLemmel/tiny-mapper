@@ -1,24 +1,12 @@
 import { get, writable } from "svelte/store";
 import { TRIGGERS } from "svelte-dnd-action";
-import {
-    surfaces as surfacesData,
-    rootSurfaces as rootSurfacesData
-} from "../../../lib/stores/content";
+
 import { eventStore } from "../../../lib/events/event-store";
 import { surfaceUI } from "../../../lib/stores/user-interface";
 import type { PointerModifiers } from "../../../lib/ui/longpress-action";
+import { rootSurfaces, surfaceStore } from "../../../lib/stores/surfaces";
+import { deleteSurfaceAndChildren } from "../../../lib/logic/surfaces";
 
-function snapshotTreeStructure() {
-    const surfaces = get(surfacesData)
-    const rootSurfaces = get(rootSurfacesData)
-    const groupChildren: Record<string, string[]> = {};
-    for (const surface of Object.values(surfaces)) {
-        if (surface.type === "Group") {
-            groupChildren[surface.id] = [...surface.children];
-        }
-    }
-    return { rootSurfaces: [...rootSurfaces], groupChildren };
-}
 
 export type SurfaceDisplayTreeItem = {
     id: string;
@@ -30,15 +18,17 @@ export const renameRequestId = writable<string | null>(null);
 
 let selectionAnchor: string | null = null;
 
+
+
 function getFlatVisualOrder(): string[] {
-    const surfaces = get(surfacesData)
-    const rootSurfaces = get(rootSurfacesData)
+
     const collapsed = new Set(get(surfaceUI).collapsedGroups);
     const result: string[] = [];
 
     function walk(id: string) {
         result.push(id);
-        const surface = surfaces[id];
+        const store = surfaceStore(id);
+        const surface = get(store);
         if (surface && surface.type === "Group" && !collapsed.has(id)) {
             for (const childId of surface.children) {
                 walk(childId);
@@ -46,7 +36,8 @@ function getFlatVisualOrder(): string[] {
         }
     }
 
-    for (const id of rootSurfaces) {
+    const root = get(rootSurfaces);
+    for (const id of root.children) {
         walk(id);
     }
 
@@ -117,13 +108,12 @@ export function toggleGroupCollapsed(id: string) {
 
 function getTopLevelSelected(selected: string[]): string[] {
     const selectedSet = new Set(selected);
-    const surfaces = get(surfacesData);
-
     return selected.filter(id => {
-        let parentId = surfaces[id]?.parentId;
+
+        let parentId = get(surfaceStore(id)).parentId;
         while (parentId && parentId !== "root") {
             if (selectedSet.has(parentId)) return false;
-            parentId = surfaces[parentId]?.parentId;
+            parentId = get(surfaceStore(parentId)).parentId;
         }
         return true;
     });
@@ -133,68 +123,26 @@ export function deleteSelectedSurfaces() {
     const selected = get(surfaceUI).selectedSurfaces;
     if (selected.length === 0) return;
 
-    const surfaces = get(surfacesData)
-    const rootSurfaces = get(rootSurfacesData)
     const topLevel = getTopLevelSelected(selected);
 
-    const toDelete = new Set<string>();
-
-    function collectDescendants(id: string) {
-        toDelete.add(id);
-        const surface = surfaces[id];
-        if (surface && surface.type === "Group") {
-            for (const childId of surface.children) {
-                collectDescendants(childId);
-            }
-        }
-    }
-
-    for (const id of topLevel) {
-        collectDescendants(id);
-    }
-
-    const deletedSurfaces = [...toDelete].map(id => structuredClone(surfaces[id]));
-    const prevRootSurfaces = [...rootSurfaces];
-
-    const nextSurfaces = structuredClone(surfaces);
-    let nextRootSurfaces = structuredClone(rootSurfaces);
-
-
-    for (const id of topLevel) {
-        const surface = nextSurfaces[id];
-        if (!surface) continue;
-
-        if (surface.parentId === "root") {
-            nextRootSurfaces = nextRootSurfaces.filter(rid => rid !== id);
-        } else {
-            const parent = nextSurfaces[surface.parentId];
-            if (parent && parent.type === "Group") {
-                parent.children = parent.children.filter(cid => cid !== id);
-            }
-        }
-    }
-
-    for (const id of toDelete) {
-        delete surfaces[id];
-    }
-
-    surfacesData.set(nextSurfaces);
-    rootSurfacesData.set(nextRootSurfaces);
+    const deletedIds = topLevel.flatMap(id => deleteSurfaceAndChildren(id));
+    const deletedSurfaces = deletedIds.map(id => structuredClone(get(surfaceStore(id))));
 
     eventStore.push({
         category: "Surface",
         type: "Deleted",
-        forwardData: { surfaceIds: [...toDelete] },
+        forwardData: { surfaceIds: [...topLevel] },
         backwardData: {
             deletedSurfaces,
-            rootSurfaces: prevRootSurfaces,
         },
     });
 
+
+    const deletedSet = new Set(deletedIds);
     surfaceUI.update(ui => ({
         ...ui,
         selectedSurfaces: [],
-        collapsedGroups: ui.collapsedGroups.filter(id => !toDelete.has(id)),
+        collapsedGroups: ui.collapsedGroups.filter(id => !deletedSet.has(id)),
     }));
 
     selectionAnchor = null;
@@ -219,11 +167,9 @@ export function applyFinalize(
     trigger: TRIGGERS,
     draggedId: string,
 ) {
-    const surfaces = get(surfacesData)
-    const rootSurfaces = get(rootSurfacesData)
-
     const selected = get(surfaceUI).selectedSurfaces;
     const topLevel = getTopLevelSelected(selected);
+
     const isMultiDrag = selected.includes(draggedId) && selected.length > 1
         && topLevel.includes(draggedId);
     const topLevelCompanionIds = isMultiDrag
@@ -252,86 +198,70 @@ export function applyFinalize(
         targetIds.splice(draggedIdx + 1, 0, ...topLevelCompanionIds);
     }
 
-    const before = snapshotTreeStructure();
     const newParentId = zoneParent ?? "root";
-
-    const nextSurfaces = structuredClone(surfaces);
-    let nextRootSurfaces = structuredClone(rootSurfaces);
 
     
     for (const id of topLevel) {
-        const surface = nextSurfaces[id];
+        const surface = get(surfaceStore(id));
         if (!surface) continue;
 
-        if (surface.parentId === "root") {
-            nextRootSurfaces = nextRootSurfaces.filter(rid => rid !== id);
-        } else {
-            const parent = nextSurfaces[surface.parentId];
-            if (parent && parent.type === "Group") {
-                parent.children = parent.children.filter(cid => cid !== id);
-            }
+        if (surface.parentId !== "root") {
+            surfaceStore(surface.parentId).update(s => {
+                if (s.type === "Group") {
+                    return {
+                        ...s,
+                        children: s.children.filter(cid => cid !== id)
+                    };
+                }
+                return s;
+            });
+        }
+        else {
+            rootSurfaces.update(r => ({
+                ...r,
+                children: r.children.filter(cid => cid !== id)
+            }));
         }
 
         surface.parentId = newParentId;
     }
 
-    if (zoneParent === null) {
-        nextRootSurfaces = targetIds;
-    } else {
-        const group = nextSurfaces[zoneParent];
-        if (group && group.type === "Group") {
-            group.children = targetIds;
-        }
+    if (zoneParent) {
+        surfaceStore(zoneParent).update(s => {
+            if (s.type === "Group") {
+                return {
+                    ...s,
+                    children: targetIds
+                };
+            }
+            return s;
+        });
     }
-
-
-    surfacesData.set(nextSurfaces);
-    rootSurfacesData.set(nextRootSurfaces);
-
-    const after = snapshotTreeStructure();
-    eventStore.push({
-        category: "Surface",
-        type: "Reordered",
-        forwardData: after,
-        backwardData: before,
-    });
 }
 
 function updateZone(zoneParent: string | null, ids: string[]) {
-    const before = snapshotTreeStructure();
-    const newParentId = zoneParent ?? "root";
-
-    const surfaces = get(surfacesData)
-    const rootSurfaces = get(rootSurfacesData)
-
-    const nextSurfaces = structuredClone(surfaces);
-    let nextRootSurfaces = structuredClone(rootSurfaces);     
-
     for (const id of ids) {
-        if (nextSurfaces[id]) {
-            nextSurfaces[id] = { ...nextSurfaces[id], parentId: newParentId };
-        }
+        surfaceStore(id).update(s => ({
+            ...s,
+            parentId: zoneParent ?? "root"
+        }));
     }
 
-    if (zoneParent !== null) {
-        const group = nextSurfaces[zoneParent];
-        if (group?.type === "Group") {
-
-            nextSurfaces[zoneParent] = { ...group, children: ids };
-        }
+    if (zoneParent) {
+        surfaceStore(zoneParent).update(s => {
+            if (s.type === "Group") {
+                return {
+                    ...s,
+                    children: ids
+                };
+            }
+            return s;
+        });
     }
     else {
-        nextRootSurfaces = ids;
+        rootSurfaces.update(r => ({
+            ...r,
+            children: ids
+        }));
     }
-
-    surfacesData.set(nextSurfaces);
-    rootSurfacesData.set(nextRootSurfaces);
-
-    const after = snapshotTreeStructure();
-    eventStore.push({
-        category: "Surface",
-        type: "Reordered",
-        forwardData: after,
-        backwardData: before,
-    });
 }

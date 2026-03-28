@@ -3,7 +3,6 @@
     import { flip } from 'svelte/animate';
 
     import { cn } from "../../../lib/core/utils";
-    import { rootSurfaces } from "../../../lib/stores/content";
     import { surfaceUI } from "../../../lib/stores/user-interface";
     import {
         applyFinalize,
@@ -16,6 +15,7 @@
     } from "./surface-tree";
     import SurfaceTreeDisplayItem from "./SurfaceTreeDisplayItem.svelte";
     import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../../lib/ui/animations';
+    import { rootSurfaces } from '../../../lib/stores/surfaces';
 
     export let className: string | undefined = undefined;
 
@@ -23,7 +23,7 @@
     let isDragging = false;
 
     $: if (!isDragging) {
-        items = $rootSurfaces.map(id => ({ id }));
+        items = $rootSurfaces.children.map(id => ({ id }));
     }
 
     function handleDndConsider(e: CustomEvent<DndEvent<SurfaceDisplayTreeItem>>) {

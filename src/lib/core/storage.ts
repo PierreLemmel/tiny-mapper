@@ -1,13 +1,14 @@
 import type { Writable } from "svelte/store";
-import { dbGet, dbSet } from "./db";
+import { getDb, type DbStore } from "./db";
 
-export async function load<T>(key: string, defaultValue: T): Promise<T> {
+export async function load<T>(dbStore: DbStore, key: string, defaultValue: T): Promise<T> {
     try {
-        const stored = await dbGet<T>(key);
+        const db = await getDb();
+        const stored = await db.get(dbStore, key);
 
         if (stored) {            
             if (Array.isArray(stored)) {
-                return stored;
+                return stored as T;
             }
 
             return {
@@ -22,8 +23,13 @@ export async function load<T>(key: string, defaultValue: T): Promise<T> {
     }
 }
 
-export function saveOnChange<T>(store: Writable<T>, key: string) {
-    store.subscribe((val) => {
-        dbSet(key, val).catch(() => {});
+export function saveOnChange<T>(store: Writable<T>, dbStore: DbStore, key: string) {
+    store.subscribe(async (val) => {
+        const db = await getDb();
+        try {
+            await db.put(dbStore, val, key);
+        } catch (err){
+            console.error("Failed to save to database", err);
+        }
     });
 }

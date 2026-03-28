@@ -1,12 +1,15 @@
-import { get } from "svelte/store";
 import {
-    surfaces as surfacesData,
-    rootSurfaces as rootSurfacesData,
-} from "../stores/content";
+    addSurfaceToStores,
+    deleteSurfaceStore,
+    getAllSurfaces,
+    rootSurfaces,
+    surfaceStore,
+} from "../stores/surfaces";
 import { eventStore } from "../events/event-store";
 import type { BlendMode, Position, Scale, Size, SurfaceFlip } from "./mapping";
 import type { RawColor } from "../core/color";
 import { createId } from "../core/utils";
+import { get } from "svelte/store";
 
 const DEFAULT_SIZE: Size = [100, 100]
 
@@ -17,7 +20,7 @@ export type SurfaceTransform = {
 }
 
 type SurfaceBase = {
-    id: string;
+    id: "root"|string;
     parentId: string | "root";
     enabled: boolean;
     name: string;
@@ -29,7 +32,7 @@ type SurfaceBase = {
     transform: SurfaceTransform;
 }
 
-export type SurfaceType = "Group"|"Quad"
+export type SurfaceType = "Group"|"Quad"|"Root"
 
 type SurfaceData<T extends SurfaceType, D> = { type: T } & SurfaceBase & D
 
@@ -40,6 +43,12 @@ export type GroupSurface = SurfaceData<"Group", {
     children: string[]
 }>
 
+export type RootSurface = {
+    type: "Root";
+    id: "root";
+    children: string[]
+}
+
 export type Surface = QuadSurface | GroupSurface
 
 const MAX_ITERATIONS = 1000
@@ -49,7 +58,7 @@ function nextAvailableName(type: SurfaceType) {
 
     const lowerType = type.toLowerCase()
 
-    const existingNames = Object.values(get(surfacesData))
+    const existingNames = getAllSurfaces()
         .map(s => s.name.toLowerCase())
         .filter(n => n.startsWith(lowerType));
 
@@ -104,28 +113,18 @@ export function createQuadSurface() {
         transform: createDefaultSurfaceTransform()
     }
 
-    const surfaces = get(surfacesData)
-    const rootSurfaces = get(rootSurfacesData)
-
-    const newSurfaces = {
-        ...surfaces,
-        [surface.id]: surface
-    }
-
-    const newRootSurfaces = [
-        ...rootSurfaces,
-        surface.id
-    ]
-
-    surfacesData.set(newSurfaces)
-    rootSurfacesData.set(newRootSurfaces)
-
     eventStore.push({
         category: "Surface",
         type: "Created",
         forwardData: { surface: structuredClone(surface), parentId: "root" },
         backwardData: { surfaceId: surface.id },
     })
+
+    addSurfaceToStores(surface.id, surface);
+    rootSurfaces.update(r => ({
+        ...r,
+        children: [...r.children, surface.id]
+    }));
 }
 
 export function createGroupSurface() {
@@ -138,21 +137,7 @@ export function createGroupSurface() {
         children: []
     }
 
-    const surfaces = get(surfacesData)
-    const rootSurfaces = get(rootSurfacesData)
-
-    const newSurfaces = {
-        ...surfaces,
-        [surface.id]: surface
-    }
-
-    const newRootSurfaces = [
-        ...rootSurfaces,
-        surface.id
-    ]
-
-    surfacesData.set(newSurfaces)
-    rootSurfacesData.set(newRootSurfaces)
+    addSurfaceToStores(surface.id, surface)
 
     eventStore.push({
         category: "Surface",
@@ -160,19 +145,61 @@ export function createGroupSurface() {
         forwardData: { surface: structuredClone(surface), parentId: "root" },
         backwardData: { surfaceId: surface.id },
     })
+
+    rootSurfaces.update(r => ({
+        ...r,
+        children: [...r.children, surface.id]
+    }));
 }
 
-export function updateSurface(id: string, values: Partial<Surface>) {
-    const surfaces = get(surfacesData);
+export function createRootSurface(): RootSurface {
+    return {
+        type: "Root",
+        id: "root",
+        children: []
+    }
+}
 
-    if (!surfaces[id]) {
-        throw new Error(`Can't find surface with id '${id}'`)
+
+export function collectDescendants(id: string, result: string[]) {
+    const store = surfaceStore(id);
+    const surface = get(store);
+    if (surface.type === "Group") {
+        for (const childId of surface.children) {
+            collectDescendants(childId, result);
+        }
+    }
+    result.push(id);
+}
+
+export function deleteSurfaceAndChildren(id: string): string[] {
+
+    const store = surfaceStore(id);
+    const surface = get(store);
+
+    if (surface.parentId !== "root") {
+        const parent = surfaceStore(surface.parentId);
+        parent.update(s => {
+            if (s.type === "Group") {
+                return {
+                    ...s,
+                    children: s.children.filter(cid => cid !== id)
+                };
+            }
+            return s;
+        });
+    }
+    else {
+        rootSurfaces.update(r => ({
+            ...r,
+            children: r.children.filter(cid => cid !== id)
+        }));
     }
 
-    const newSurfaces = structuredClone(surfaces);
-    const surface: Surface = newSurfaces[id]
+    const idsToDelete: string[] = [];
+    collectDescendants(id, idsToDelete);
+    
+    idsToDelete.forEach(deleteSurfaceStore);
 
-    
-    
-    newSurfaces[id] = surface;
+    return idsToDelete;
 }

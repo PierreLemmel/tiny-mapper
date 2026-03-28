@@ -6,7 +6,6 @@ import type { ApplySurfacePropertyData, SurfacePropertyEvent } from "./surfaces-
 
 function applySurfaceProperty<K extends keyof Surface>(data: ApplySurfacePropertyData<K>) {
     const surfaceId = data.surfaceId;
-    console.log("applySurfaceProperty", surfaceId, data);
 }
 
 function applyTreeStructure(

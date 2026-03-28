@@ -5,7 +5,6 @@
     import GroupIcon from "../../../icons/GroupIcon.svelte";
     import QuadIcon from "../../../icons/QuadIcon.svelte";
     import { cn } from "../../../lib/core/utils";
-    import { surfaces } from "../../../lib/stores/content";
     import { eventStore } from "../../../lib/events/event-store";
     import { surfaceUI } from "../../../lib/stores/user-interface";
     import { longpress, type PointerModifiers } from "../../../lib/ui/longpress-action";
@@ -24,19 +23,20 @@
     } from "./surface-tree";
     import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../../lib/ui/animations';
     import ChevronIcon from '../../../icons/ChevronIcon.svelte';
+    import { surfaceStore } from '../../../lib/stores/surfaces';
 
     export let item: SurfaceDisplayTreeItem;
     export let indent: number = 0;
     export let treeDisabled: boolean = false;
 
     $: id = item.id;
-    $: surface = $surfaces[id];
-    $: type = surface?.type;
+    $: surface = surfaceStore(id);
+    $: type = $surface?.type;
     $: selected = $surfaceUI.selectedSurfaces.includes(id);
     $: isDragCompanion = $activeDragCompanions.has(id);
     $: collapsed = type === "Group" && $surfaceUI.collapsedGroups.includes(id);
 
-    $: disabled = treeDisabled || !surface?.enabled;
+    $: disabled = treeDisabled || !$surface?.enabled;
 
     $: iconClasses = cn(
         "size-6",
@@ -56,8 +56,8 @@
     let childItems: SurfaceDisplayTreeItem[] = [];
     let isChildDragging = false;
 
-    $: if (!isChildDragging && type === "Group" && surface?.type === "Group") {
-        childItems = surface.children.map((cid: string) => ({ id: cid }));
+    $: if (!isChildDragging && type === "Group" && $surface.type === "Group") {
+        childItems = $surface.children.map((cid: string) => ({ id: cid }));
     }
 
     function handleChildConsider(e: CustomEvent<DndEvent<SurfaceDisplayTreeItem>>) {
@@ -136,7 +136,7 @@
         {/if}
         <NameDisplay
             bind:this={nameDisplay}
-            bind:value={$surfaces[id].name}
+            bind:value={$surface.name}
             className={cn(
                 disabled ? "text-neutral-400" : (selected ? "text-primary-200" : "text-neutral-200")
             )}
@@ -150,7 +150,7 @@
 
     <div class="flex flex-row items-center justify-end">
         <VisibleCheckbox
-            bind:visible={$surfaces[id].enabled}
+            bind:visible={$surface.enabled}
             className={cn(
                 "py-0.5",
                 treeDisabled && "opacity-65"

@@ -1,5 +1,8 @@
 import { writable } from "svelte/store"
 import { load, saveOnChange } from "../core/storage"
+import { DbStores } from "../core/db";
+
+const STORE_UI = DbStores.ui;
 
 const GLOBAL_UI_STORAGE_KEY = "tm-global-ui-content"
 const MAPPING_UI_STORAGE_KEY = "tm-mapping-ui-content"
@@ -105,13 +108,13 @@ export const surfaceUI = writable<SurfaceUIData>(DEFAULT_SURFACE_UI_DATA)
 export const renderingUI = writable<RenderingUIData>(DEFAULT_RENDERING_UI_DATA)
 
 export async function initUIStores() {
-    globalUI.set(await load(GLOBAL_UI_STORAGE_KEY, DEFAULT_GLOBAL_UI_DATA));
-    mappingUI.set(await load(MAPPING_UI_STORAGE_KEY, DEFAULT_MAPPING_UI_DATA));
-    surfaceUI.set(await load(SURFACE_STORAGE_KEY, DEFAULT_SURFACE_UI_DATA));
-    renderingUI.set(await load(RENDERING_UI_STORAGE_KEY, DEFAULT_RENDERING_UI_DATA));
+    globalUI.set(await load(STORE_UI, GLOBAL_UI_STORAGE_KEY, DEFAULT_GLOBAL_UI_DATA));
+    mappingUI.set(await load(STORE_UI, MAPPING_UI_STORAGE_KEY, DEFAULT_MAPPING_UI_DATA));
+    surfaceUI.set(await load(STORE_UI, SURFACE_STORAGE_KEY, DEFAULT_SURFACE_UI_DATA));
+    renderingUI.set(await load(STORE_UI, RENDERING_UI_STORAGE_KEY, DEFAULT_RENDERING_UI_DATA));
 
-    saveOnChange(globalUI, GLOBAL_UI_STORAGE_KEY);
-    saveOnChange(mappingUI, MAPPING_UI_STORAGE_KEY);
-    saveOnChange(surfaceUI, SURFACE_STORAGE_KEY);
-    saveOnChange(renderingUI, RENDERING_UI_STORAGE_KEY);
+    saveOnChange(globalUI, STORE_UI, GLOBAL_UI_STORAGE_KEY);
+    saveOnChange(mappingUI, STORE_UI, MAPPING_UI_STORAGE_KEY);
+    saveOnChange(surfaceUI, STORE_UI, SURFACE_STORAGE_KEY);
+    saveOnChange(renderingUI, STORE_UI, RENDERING_UI_STORAGE_KEY);
 }
