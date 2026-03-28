@@ -5,6 +5,7 @@
     export let value: number = 0;
     export let color: 'primary' | 'secondary' = 'secondary';
     export let className: string | undefined = undefined;
+    export let onCommit: (oldValue: number, newValue: number) => void = () => {};
 
     export let options: {
         type: 'percentage';
@@ -27,6 +28,8 @@
     $: displayValueStr = options.type === 'percentage' ? displayValue.toFixed(options.precision ?? 1) : (Number.isInteger(displayValue) && Number.isInteger(step)
         ? displayValue.toString()
         : displayValue.toFixed(1));
+
+    let commitStartValue: number | undefined;
 </script>
 
 <div class={cn("flex flex-col gap-1.5 py-1", className)}>
@@ -56,6 +59,13 @@
             {max}
             {step}
             class="slider-input absolute inset-0 w-full h-full cursor-pointer"
+            on:pointerdown={() => { commitStartValue = value; }}
+            on:change={() => {
+                if (commitStartValue !== undefined && commitStartValue !== value) {
+                    onCommit(commitStartValue, value);
+                }
+                commitStartValue = undefined;
+            }}
         />
     </div>
 </div>

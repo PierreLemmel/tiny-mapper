@@ -7,6 +7,7 @@
 
     export let value: SurfaceFlip;
     export let className: string | undefined = undefined;
+    export let onCommit: (oldValue: SurfaceFlip, newValue: SurfaceFlip) => void = () => {};
 
     const flipOptions: { flip: SurfaceFlip, label: string, transform: string }[] = [
         { flip: [false, false], label: "None", transform: "none" },
@@ -30,7 +31,7 @@
                     "size-6 shrink-0 transition-colors cursor-pointer rounded-sm",
                     index === flipIndex ? "text-neutral-200 bg-primary-400 p-0.5" : "text-neutral-200 bg-neutral-600/70 p-1"
                 )}
-                on:click={() => value = option.flip}
+                on:click={() => { const old = value; value = option.flip; onCommit(old, option.flip); }}
                 aria-label={option.label}
             >
                 <FlipIcon className={cn(

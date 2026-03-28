@@ -2,21 +2,20 @@ import { writable } from "svelte/store";
 import type { Surface } from "../logic/surfaces";
 import { load, saveOnChange } from "../core/storage";
 
-export type Content = {
-    surfaces: { [key: string]: Surface }
-    rootSurfaces: string[]
+const STORAGE_KEY_SURFACES = 'tm-surfaces'
+const STORAGE_KEY_ROOT_SURFACES = 'tm-root-surfaces'
+
+export type SurfaceData = {
+    [key: string]: Surface
 }
 
-const STORAGE_KEY = 'tm-mapping-content'
+export const surfaces = writable<SurfaceData>({})
+export const rootSurfaces = writable<string[]>([])
 
-const DEFAULT_CONTENT: Content = {
-    surfaces: {},
-    rootSurfaces: []
-}
+export async function initContentStores() {
+    surfaces.set(await load(STORAGE_KEY_SURFACES, {}));
+    rootSurfaces.set(await load(STORAGE_KEY_ROOT_SURFACES, []));
 
-
-export const content = writable<Content>(load(STORAGE_KEY, DEFAULT_CONTENT))
-
-export function saveContentOnChange() {
-    saveOnChange(content, STORAGE_KEY)
+    saveOnChange(surfaces, STORAGE_KEY_SURFACES);
+    saveOnChange(rootSurfaces, STORAGE_KEY_ROOT_SURFACES);
 }

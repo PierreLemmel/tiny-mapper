@@ -17,6 +17,7 @@
     export let disabled: boolean = false;
     export let className: string | undefined = undefined;
     export let onChange: (value: T) => void = () => {};
+    export let onCommit: (oldValue: T | undefined, newValue: T) => void = () => {};
 
     let open = false;
     let container: HTMLDivElement | undefined;
@@ -57,8 +58,10 @@
 
     function selectOption(option: DropdownOption<T>) {
         if (option.disabled) return;
+        const oldValue = value;
         value = option.value;
         onChange(option.value);
+        onCommit(oldValue, option.value);
         close();
     }
 

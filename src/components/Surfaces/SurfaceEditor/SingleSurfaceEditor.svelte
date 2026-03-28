@@ -3,6 +3,7 @@
     import QuadIcon from "../../../icons/QuadIcon.svelte";
     import { cn } from "../../../lib/core/utils";
     import type { Surface } from "../../../lib/logic/surfaces";
+    import { eventStore } from "../../../lib/events/event-store";
     import { surfaceUI } from "../../../lib/stores/user-interface";
     import BlendModeEditor from "../../Shared/BlendModeEditor.svelte";
     import ColorPicker from "../../Shared/ColorPicker.svelte";
@@ -46,8 +47,21 @@
             className={cn(
                 surface.enabled ? "text-neutral-200" : "text-neutral-400"
             )}
+            onCommit={(oldVal, newVal) => eventStore.push({
+                category: "Surface", type: "NameChanged",
+                forwardData: { surfaceId: surface.id, name: newVal },
+                backwardData: { surfaceId: surface.id, name: oldVal },
+            })}
         />
-        <VisibleCheckbox bind:visible={surface.enabled} className="mb-0.5" />
+        <VisibleCheckbox
+            bind:visible={surface.enabled}
+            className="mb-0.5"
+            onCommit={(oldVal, newVal) => eventStore.push({
+                category: "Surface", type: "EnabledChanged",
+                forwardData: { surfaceId: surface.id, enabled: newVal },
+                backwardData: { surfaceId: surface.id, enabled: oldVal },
+            })}
+        />
     </div>
     
     <HorizontalSeparator className={separatorClasses} />
@@ -58,14 +72,41 @@
                 bind:value={surface.opacity}
                 options={{ type: 'percentage' }}
                 color="primary"
+                onCommit={(oldVal, newVal) => eventStore.push({
+                    category: "Surface", type: "OpacityChanged",
+                    forwardData: { surfaceId: surface.id, opacity: newVal },
+                    backwardData: { surfaceId: surface.id, opacity: oldVal },
+                })}
             />
-            <BlendModeEditor label="Blend Mode" bind:value={surface.blendMode} />
+            <BlendModeEditor
+                label="Blend Mode"
+                bind:value={surface.blendMode}
+                onCommit={(oldVal, newVal) => eventStore.push({
+                    category: "Surface", type: "BlendModeChanged",
+                    forwardData: { surfaceId: surface.id, blendMode: newVal },
+                    backwardData: { surfaceId: surface.id, blendMode: oldVal },
+                })}
+            />
             <FoldableColorPicker
-            title="Color"
-            bind:value={surface.color}
-            bind:open={$surfaceUI.baseProperties.colorOpen}
-            bind:mode={$surfaceUI.baseProperties.colorColorMode} />
-            <SurfaceFlipEditor label="Flip" bind:value={surface.flip} />
+                title="Color"
+                bind:value={surface.color}
+                bind:open={$surfaceUI.baseProperties.colorOpen}
+                bind:mode={$surfaceUI.baseProperties.colorColorMode}
+                onCommit={(oldVal, newVal) => eventStore.push({
+                    category: "Surface", type: "ColorChanged",
+                    forwardData: { surfaceId: surface.id, color: newVal },
+                    backwardData: { surfaceId: surface.id, color: oldVal },
+                })}
+            />
+            <SurfaceFlipEditor
+                label="Flip"
+                bind:value={surface.flip}
+                onCommit={(oldVal, newVal) => eventStore.push({
+                    category: "Surface", type: "FlipChanged",
+                    forwardData: { surfaceId: surface.id, flip: newVal },
+                    backwardData: { surfaceId: surface.id, flip: oldVal },
+                })}
+            />
 
             {#if surface.type === "Quad"}
                 <Slider
@@ -73,6 +114,11 @@
                     bind:value={surface.feathering}
                     options={{ type: 'percentage' }}
                     color="primary"
+                    onCommit={(oldVal, newVal) => eventStore.push({
+                        category: "Surface", type: "FeatheringChanged",
+                        forwardData: { surfaceId: surface.id, feathering: newVal },
+                        backwardData: { surfaceId: surface.id, feathering: oldVal },
+                    })}
                 />
             {/if}
         </div>
@@ -81,8 +127,24 @@
     <HorizontalSeparator className={separatorClasses} />
     <Foldable title="Transform" bind:open={$surfaceUI.transform.open}>
         <div class="flex flex-col gap-2.5">
-            <PositionEditor label="Position" bind:value={surface.transform.position} />
-            <RotationEditor label="Rotation" bind:value={surface.transform.rotation} />
+            <PositionEditor
+                label="Position"
+                bind:value={surface.transform.position}
+                onCommit={(oldVal, newVal) => eventStore.push({
+                    category: "Surface", type: "PositionChanged",
+                    forwardData: { surfaceId: surface.id, position: newVal },
+                    backwardData: { surfaceId: surface.id, position: oldVal },
+                })}
+            />
+            <RotationEditor
+                label="Rotation"
+                bind:value={surface.transform.rotation}
+                onCommit={(oldVal, newVal) => eventStore.push({
+                    category: "Surface", type: "RotationChanged",
+                    forwardData: { surfaceId: surface.id, rotation: newVal },
+                    backwardData: { surfaceId: surface.id, rotation: oldVal },
+                })}
+            />
         </div>
     </Foldable>
 

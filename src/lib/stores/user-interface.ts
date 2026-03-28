@@ -99,25 +99,19 @@ const DEFAULT_RENDERING_UI_DATA: RenderingUIData = {
     statsDisplay: false,
 }
 
-export const globalUI = writable<GlobalUIData>(
-    load(GLOBAL_UI_STORAGE_KEY, DEFAULT_GLOBAL_UI_DATA)
-)
+export const globalUI = writable<GlobalUIData>(DEFAULT_GLOBAL_UI_DATA)
+export const mappingUI = writable<MappingUIData>(DEFAULT_MAPPING_UI_DATA)
+export const surfaceUI = writable<SurfaceUIData>(DEFAULT_SURFACE_UI_DATA)
+export const renderingUI = writable<RenderingUIData>(DEFAULT_RENDERING_UI_DATA)
 
-export const mappingUI = writable<MappingUIData>(
-    load(MAPPING_UI_STORAGE_KEY, DEFAULT_MAPPING_UI_DATA)
-)
+export async function initUIStores() {
+    globalUI.set(await load(GLOBAL_UI_STORAGE_KEY, DEFAULT_GLOBAL_UI_DATA));
+    mappingUI.set(await load(MAPPING_UI_STORAGE_KEY, DEFAULT_MAPPING_UI_DATA));
+    surfaceUI.set(await load(SURFACE_STORAGE_KEY, DEFAULT_SURFACE_UI_DATA));
+    renderingUI.set(await load(RENDERING_UI_STORAGE_KEY, DEFAULT_RENDERING_UI_DATA));
 
-export const surfaceUI = writable<SurfaceUIData>(
-    load(SURFACE_STORAGE_KEY, DEFAULT_SURFACE_UI_DATA)
-)
-
-export const renderingUI = writable<RenderingUIData>(
-    load(RENDERING_UI_STORAGE_KEY, DEFAULT_RENDERING_UI_DATA)
-)
-
-export function saveUIOnChange() {
-    saveOnChange(surfaceUI, SURFACE_STORAGE_KEY)
-    saveOnChange(mappingUI, MAPPING_UI_STORAGE_KEY)
-    saveOnChange(globalUI, GLOBAL_UI_STORAGE_KEY)
-    saveOnChange(renderingUI, RENDERING_UI_STORAGE_KEY)
+    saveOnChange(globalUI, GLOBAL_UI_STORAGE_KEY);
+    saveOnChange(mappingUI, MAPPING_UI_STORAGE_KEY);
+    saveOnChange(surfaceUI, SURFACE_STORAGE_KEY);
+    saveOnChange(renderingUI, RENDERING_UI_STORAGE_KEY);
 }

@@ -6,6 +6,7 @@
     export let label: string = "Rotation";
     export let value: number;
     export let className: string | undefined = undefined;
+    export let onCommit: (oldValue: number, newValue: number) => void = () => {};
 </script>
 
 <div class={cn("flex flex-row items-center justify-between", className)}>
@@ -23,7 +24,8 @@
             minMaxMode="Circular"
             unit="°"
             mode="Infinite"
+            {onCommit}
         />
-        <RotationKnob bind:value className="size-9 shrink-0" />
+        <RotationKnob bind:value className="size-9 shrink-0" {onCommit} />
     </div>
 </div>

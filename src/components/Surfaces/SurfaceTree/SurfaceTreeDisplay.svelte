@@ -3,7 +3,7 @@
     import { flip } from 'svelte/animate';
 
     import { cn } from "../../../lib/core/utils";
-    import { content } from "../../../lib/stores/content";
+    import { rootSurfaces } from "../../../lib/stores/content";
     import { surfaceUI } from "../../../lib/stores/user-interface";
     import {
         applyFinalize,
@@ -23,7 +23,7 @@
     let isDragging = false;
 
     $: if (!isDragging) {
-        items = $content.rootSurfaces.map(id => ({ id }));
+        items = $rootSurfaces.map(id => ({ id }));
     }
 
     function handleDndConsider(e: CustomEvent<DndEvent<SurfaceDisplayTreeItem>>) {

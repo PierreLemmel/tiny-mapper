@@ -14,6 +14,7 @@
 
     export let open: boolean = false;
     export let mode: ColorPickerMode = "hsv";
+    export let onCommit: (oldValue: RawColor, newValue: RawColor) => void = () => {};
 </script>
 
 <div class={cn(
@@ -40,6 +41,6 @@
         </div>
     </div>
     {#if open}
-        <ColorPicker bind:value bind:mode />
+        <ColorPicker bind:value bind:mode {onCommit} />
     {/if}
 </div>

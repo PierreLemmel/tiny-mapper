@@ -14,9 +14,24 @@
         hexToRawColor,
     } from "../../lib/core/color";
     import Scrubber from "./Scrubber.svelte";
+    import type { RawColor as RawColorType } from "../../lib/core/color";
 
     export let value: RawColor = [1, 1, 1, 1];
     export let className: string | undefined = undefined;
+    export let onCommit: (oldValue: RawColor, newValue: RawColor) => void = () => {};
+
+    let commitStartColor: RawColorType | null = null;
+
+    function captureStart() { commitStartColor = [...value] as RawColorType; }
+    function fireCommit() {
+        if (commitStartColor !== null) {
+            const old = commitStartColor;
+            commitStartColor = null;
+            if (old[0] !== value[0] || old[1] !== value[1] || old[2] !== value[2] || old[3] !== value[3]) {
+                onCommit(old, value);
+            }
+        }
+    }
 
     const modes: ColorPickerMode[] = ["hsv", "rgb", "hex"];
     export let mode: ColorPickerMode = "hsv";
@@ -36,7 +51,7 @@
     $: if (!hexFocused) hexInput = hex;
     $: hueRgb = hueToRgbString(hsva.h);
 
-    function areaDown(e: PointerEvent) { areaEl.setPointerCapture(e.pointerId); areaUpdate(e); }
+    function areaDown(e: PointerEvent) { captureStart(); areaEl.setPointerCapture(e.pointerId); areaUpdate(e); }
     function areaMove(e: PointerEvent) { if (areaEl.hasPointerCapture(e.pointerId)) areaUpdate(e); }
     function areaUpdate(e: PointerEvent) {
         const r = areaEl.getBoundingClientRect();
@@ -50,6 +65,7 @@
         return clamp((e.clientX - r.left) / r.width, 0, 1);
     }
     function td(el: HTMLDivElement, e: PointerEvent, cb: (r: number) => void) {
+        captureStart();
         el.setPointerCapture(e.pointerId);
         cb(trackRatio(el, e));
     }
@@ -71,7 +87,11 @@
         hexFocused = false;
         const parsed = hexToRawColor(hexInput);
         if (!parsed) { hexInput = hex; return; }
+        const old: RawColorType = [...value] as RawColorType;
         value = [parsed[0], parsed[1], parsed[2], 1];
+        if (old[0] !== value[0] || old[1] !== value[1] || old[2] !== value[2] || old[3] !== value[3]) {
+            onCommit(old, value);
+        }
     }
     function hexKeydown(e: KeyboardEvent) { if (e.key === "Enter") commitHex(); }
 </script>
@@ -102,6 +122,7 @@
             style="background: {hueRgb}"
             on:pointerdown={areaDown}
             on:pointermove={areaMove}
+            on:lostpointercapture={fireCommit}
             role="slider"
             tabindex={0}
             aria-label="Saturation and brightness"
@@ -129,6 +150,7 @@
                         class="absolute inset-0 hue-gradient cursor-pointer touch-none"
                         on:pointerdown={hDown}
                         on:pointermove={hMove}
+                        on:lostpointercapture={fireCommit}
                         role="slider"
                         tabindex={0}
                         aria-label="Hue"
@@ -149,6 +171,10 @@
                     max={100}
                     unit="%"
                     onChange={v => { value = hsvaToRawColor({ ...hsva, s: v }); }}
+                    onCommit={(oldS) => {
+                        const oldColor = hsvaToRawColor({ ...hsva, s: oldS });
+                        onCommit(oldColor, value);
+                    }}
                 />
                 <Scrubber
                     label="Brightness"
@@ -157,6 +183,10 @@
                     max={100}
                     unit="%"
                     onChange={v => { value = hsvaToRawColor({ ...hsva, v: v }); }}
+                    onCommit={(oldV) => {
+                        const oldColor = hsvaToRawColor({ ...hsva, v: oldV });
+                        onCommit(oldColor, value);
+                    }}
                 />
             </div>
 
@@ -173,6 +203,7 @@
                         style="background: linear-gradient(to right,  black, red)"
                         on:pointerdown={rDown}
                         on:pointermove={rMove}
+                        on:lostpointercapture={fireCommit}
                         role="slider"
                         tabindex={0}
                         aria-label="Red"
@@ -197,6 +228,7 @@
                         style="background: linear-gradient(to right,  black, green)"
                         on:pointerdown={gDown}
                         on:pointermove={gMove}
+                        on:lostpointercapture={fireCommit}
                         role="slider"
                         tabindex={0}
                         aria-label="Green"
@@ -221,6 +253,7 @@
                         style="background: linear-gradient(to right,  black, blue)"
                         on:pointerdown={bDown}
                         on:pointermove={bMove}
+                        on:lostpointercapture={fireCommit}
                         role="slider"
                         tabindex={0}
                         aria-label="Blue"

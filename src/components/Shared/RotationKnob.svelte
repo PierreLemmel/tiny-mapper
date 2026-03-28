@@ -3,6 +3,7 @@
 
     export let value: number;
     export let className: string | undefined = undefined;
+    export let onCommit: (oldValue: number, newValue: number) => void = () => {};
 
     let divEl: HTMLDivElement;
 
@@ -39,6 +40,9 @@
     }
 
     function onDocPointerUp(e: PointerEvent) {
+        if (initVal !== value) {
+            onCommit(initVal, value);
+        }
         cleanup(e);
     }
 

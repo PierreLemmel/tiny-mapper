@@ -1,19 +1,39 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { saveContentOnChange } from "./lib/stores/content";
-    import { globalUI, saveUIOnChange } from "./lib/stores/user-interface";
+    import { initContentStores } from "./lib/stores/content";
+    import { globalUI, initUIStores } from "./lib/stores/user-interface";
     import TopMenuBar from "./components/Shared/TopMenuBar.svelte";
     import MappingWindow from "./components/Windows/MappingWindow.svelte";
     import OutputsWindow from "./components/Windows/OutputsWindow.svelte";
     import SettingsWindow from "./components/Windows/SettingsWindow.svelte";
-    import { saveMainRenderingOnChange } from "./lib/stores/rendering";
+    import { initRenderingStore } from "./lib/stores/rendering";
+    import { registerAllEventHandlers } from "./lib/events/register-handlers";
+    import { eventStore } from "./lib/events/event-store";
 
-    onMount(() => {
-        saveContentOnChange();
-        saveUIOnChange();
-        saveMainRenderingOnChange();
+    onMount(async () => {
+        await Promise.all([
+            initContentStores(),
+            initUIStores(),
+            initRenderingStore(),
+        ]);
+        registerAllEventHandlers();
     })
+
+    function handleKeydown(e: KeyboardEvent) {
+        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+        if (!isCtrlOrMeta) return;
+
+        if (e.key === "z" && !e.shiftKey) {
+            e.preventDefault();
+            eventStore.undo();
+        } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+            e.preventDefault();
+            eventStore.redo();
+        }
+    }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div class="bg-neutral-950 h-screen w-dvw flex flex-col">
     <TopMenuBar tabs={["Mapping", "Outputs", "Settings"]} bind:activeTab={$globalUI.activeTab} />

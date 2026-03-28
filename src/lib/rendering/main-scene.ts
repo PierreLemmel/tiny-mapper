@@ -1,6 +1,8 @@
 import * as THREE from "three";
+import type { Surface } from "../logic/surfaces";
+import { surfaces as surfacesData, type SurfaceData } from "../stores/content";
 
-import { content, type Content } from "../stores/content";
+
 import { get } from "svelte/store";
 
 export class MainScene {
@@ -13,10 +15,10 @@ export class MainScene {
     private constructor() {
         this.scene = new THREE.Scene();
 
-        this.initializeScene(get(content));
+        this.initializeScene(get(surfacesData));
     }
 
-    private initializeScene(content: Content) {
+    private initializeScene(content: SurfaceData) {
 
     }
 

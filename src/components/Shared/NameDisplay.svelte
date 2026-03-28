@@ -3,6 +3,7 @@
 
     export let value: string;
     export let onChange: (newValue: string) => void = () => {};
+    export let onCommit: (oldValue: string, newValue: string) => void = () => {};
     export let editable: boolean = true;
     export let className: string | undefined = undefined;
 
@@ -24,8 +25,10 @@
         editing = false;
         const trimmed = editValue.trim();
         if (trimmed && trimmed !== value) {
+            const oldValue = value;
             value = trimmed;
             onChange(trimmed);
+            onCommit(oldValue, trimmed);
         }
         editValue = value;
     }

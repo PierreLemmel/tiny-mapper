@@ -12,6 +12,7 @@
     export let precision: number = 2;
 
     export let onChange: (value: number) => void = () => {};
+    export let onCommit: (oldValue: number, newValue: number) => void = () => {};
 
     export let sensitivity: number = 1;
 
@@ -64,6 +65,9 @@
 
     function onScrubPointerUp() {
         if (mode === "Infinite") return;
+        if (scrubStartVal !== null && scrubStartVal !== value) {
+            onCommit(scrubStartVal, value);
+        }
         scrubStartVal = null;
     }
 
@@ -74,6 +78,9 @@
     }
 
     function onDocPointerUp() {
+        if (scrubStartVal !== null && scrubStartVal !== value) {
+            onCommit(scrubStartVal, value);
+        }
         scrubStartVal = null;
         scrubDelta = 0;
         if (document.pointerLockElement) document.exitPointerLock();
@@ -98,17 +105,17 @@
 
     let cancelCommit = false;
     function commitEdit() {
-        
         editing = false;
 
         if (!cancelCommit) {
-
+            const oldValue = value;
             const parsed = parseFloat(inputText);
-            console.log(parsed);
             if (!isNaN(parsed)) {
                 value = applyClamping(parsed);
-                console.log(value);
                 onChange(value);
+                if (oldValue !== value) {
+                    onCommit(oldValue, value);
+                }
             }
         }
 

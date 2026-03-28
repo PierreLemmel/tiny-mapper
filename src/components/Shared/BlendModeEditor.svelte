@@ -6,6 +6,7 @@
     export let label: string = "Blend Mode";
     export let value: BlendMode;
     export let className: string | undefined = undefined;
+    export let onCommit: (oldValue: BlendMode, newValue: BlendMode) => void = () => {};
 </script>
 
 <div class={cn(
@@ -17,5 +18,8 @@
         placeholder={"Blend Mode"}
         options={blendModeValues.map(value => ({ value, label: value }))}
         bind:value={value}
+        onCommit={(oldVal, newVal) => {
+            if (oldVal !== undefined && newVal !== undefined) onCommit(oldVal, newVal);
+        }}
     />
 </div>

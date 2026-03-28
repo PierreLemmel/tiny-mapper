@@ -5,7 +5,8 @@
     import GroupIcon from "../../../icons/GroupIcon.svelte";
     import QuadIcon from "../../../icons/QuadIcon.svelte";
     import { cn } from "../../../lib/core/utils";
-    import { content } from "../../../lib/stores/content";
+    import { surfaces } from "../../../lib/stores/content";
+    import { eventStore } from "../../../lib/events/event-store";
     import { surfaceUI } from "../../../lib/stores/user-interface";
     import { longpress, type PointerModifiers } from "../../../lib/ui/longpress-action";
     import NameDisplay from "../../Shared/NameDisplay.svelte";
@@ -29,7 +30,7 @@
     export let treeDisabled: boolean = false;
 
     $: id = item.id;
-    $: surface = $content.surfaces[id];
+    $: surface = $surfaces[id];
     $: type = surface?.type;
     $: selected = $surfaceUI.selectedSurfaces.includes(id);
     $: isDragCompanion = $activeDragCompanions.has(id);
@@ -135,18 +136,31 @@
         {/if}
         <NameDisplay
             bind:this={nameDisplay}
-            bind:value={$content.surfaces[id].name}
+            bind:value={$surfaces[id].name}
             className={cn(
                 disabled ? "text-neutral-400" : (selected ? "text-primary-200" : "text-neutral-200")
             )}
+            onCommit={(oldVal, newVal) => eventStore.push({
+                category: "Surface", type: "NameChanged",
+                forwardData: { surfaceId: id, name: newVal },
+                backwardData: { surfaceId: id, name: oldVal },
+            })}
         />
     </div>
 
     <div class="flex flex-row items-center justify-end">
-        <VisibleCheckbox bind:visible={$content.surfaces[id].enabled} className={cn(
-            "py-0.5",
-            treeDisabled && "opacity-65"
-        )} />
+        <VisibleCheckbox
+            bind:visible={$surfaces[id].enabled}
+            className={cn(
+                "py-0.5",
+                treeDisabled && "opacity-65"
+            )}
+            onCommit={(oldVal, newVal) => eventStore.push({
+                category: "Surface", type: "EnabledChanged",
+                forwardData: { surfaceId: id, enabled: newVal },
+                backwardData: { surfaceId: id, enabled: oldVal },
+            })}
+        />
     </div>
     {/if}
 </div>

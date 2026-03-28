@@ -7,6 +7,7 @@
     export let value: Position;
     export let className: string | undefined = undefined;
     export let precision: number = 2;
+    export let onCommit: (oldValue: Position, newValue: Position) => void = () => {};
 
     const sensitivity = 2;
     const scrubberClasses = "w-20 shrink-0"
@@ -25,6 +26,7 @@
             max={SCREEN_X_MAX}
             mode="Infinite"
             onChange={v => { value = [v, value[1]]; }}
+            onCommit={(oldX) => { onCommit([oldX, value[1]], value); }}
         />
         <Scrubber
             label="Y"
@@ -36,6 +38,7 @@
             max={SCREEN_Y_MAX}
             mode="Infinite"
             onChange={v => { value = [value[0], v]; }}
+            onCommit={(oldY) => { onCommit([value[0], oldY], value); }}
         />
     </div>
 </div>

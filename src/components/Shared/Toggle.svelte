@@ -3,12 +3,15 @@
 
     export let value: boolean = false;
     export let onChange: (value: boolean) => void = () => {};
+    export let onCommit: (oldValue: boolean, newValue: boolean) => void = () => {};
     export let label: string;
     export let type: 'primary' | 'secondary' = 'secondary';
 
     function toggle() {
+        const oldValue = value;
         value = !value;
         onChange(!value);
+        onCommit(oldValue, value);
     }
 </script>
 

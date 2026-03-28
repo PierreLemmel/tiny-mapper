@@ -1,5 +1,9 @@
 import { get } from "svelte/store";
-import { content } from "../stores/content";
+import {
+    surfaces as surfacesData,
+    rootSurfaces as rootSurfacesData,
+} from "../stores/content";
+import { eventStore } from "../events/event-store";
 import type { BlendMode, Position, Scale, Size, SurfaceFlip } from "./mapping";
 import type { RawColor } from "../core/color";
 import { createId } from "../core/utils";
@@ -14,6 +18,7 @@ export type SurfaceTransform = {
 
 type SurfaceBase = {
     id: string;
+    parentId: string | "root";
     enabled: boolean;
     name: string;
     opacity: number;
@@ -44,7 +49,7 @@ function nextAvailableName(type: SurfaceType) {
 
     const lowerType = type.toLowerCase()
 
-    const existingNames = Object.values(get(content).surfaces)
+    const existingNames = Object.values(get(surfacesData))
         .map(s => s.name.toLowerCase())
         .filter(n => n.startsWith(lowerType));
 
@@ -69,6 +74,7 @@ function nextAvailableName(type: SurfaceType) {
 function createSurfaceBase(): Omit<SurfaceBase, "name"> {
     return {
         id: createId(),
+        parentId: "root",
         enabled: true,
         opacity: 1,
         color: [1, 1, 1, 1],
@@ -98,11 +104,8 @@ export function createQuadSurface() {
         transform: createDefaultSurfaceTransform()
     }
 
-    const {
-        surfaces,
-        rootSurfaces,
-        ...contentRest
-    } = get(content)
+    const surfaces = get(surfacesData)
+    const rootSurfaces = get(rootSurfacesData)
 
     const newSurfaces = {
         ...surfaces,
@@ -114,10 +117,14 @@ export function createQuadSurface() {
         surface.id
     ]
 
-    content.set({
-        ...contentRest,
-        surfaces: newSurfaces,
-        rootSurfaces: newRootSurfaces
+    surfacesData.set(newSurfaces)
+    rootSurfacesData.set(newRootSurfaces)
+
+    eventStore.push({
+        category: "Surface",
+        type: "Created",
+        forwardData: { surface: structuredClone(surface), parentId: "root" },
+        backwardData: { surfaceId: surface.id },
     })
 }
 
@@ -131,11 +138,8 @@ export function createGroupSurface() {
         children: []
     }
 
-    const {
-        surfaces,
-        rootSurfaces,
-        ...contentRest
-    } = get(content)
+    const surfaces = get(surfacesData)
+    const rootSurfaces = get(rootSurfacesData)
 
     const newSurfaces = {
         ...surfaces,
@@ -147,15 +151,19 @@ export function createGroupSurface() {
         surface.id
     ]
 
-    content.set({
-        ...contentRest,
-        surfaces: newSurfaces,
-        rootSurfaces: newRootSurfaces
+    surfacesData.set(newSurfaces)
+    rootSurfacesData.set(newRootSurfaces)
+
+    eventStore.push({
+        category: "Surface",
+        type: "Created",
+        forwardData: { surface: structuredClone(surface), parentId: "root" },
+        backwardData: { surfaceId: surface.id },
     })
 }
 
 export function updateSurface(id: string, values: Partial<Surface>) {
-    const { surfaces } = get(content);
+    const surfaces = get(surfacesData);
 
     if (!surfaces[id]) {
         throw new Error(`Can't find surface with id '${id}'`)

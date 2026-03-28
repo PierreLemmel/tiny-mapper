@@ -5,8 +5,6 @@
     import { createGroupSurface, createQuadSurface } from "../../lib/logic/surfaces";
     import { cn } from "../../lib/core/utils";
     import SurfaceTreeDisplay from "./SurfaceTree/SurfaceTreeDisplay.svelte";
-    import { onMount } from "svelte";
-    import { clearSelection } from "./SurfaceTree/surface-tree";
 
     export let className: string | undefined = undefined;
 </script>

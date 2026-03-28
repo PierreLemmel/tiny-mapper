@@ -1,27 +1,29 @@
 import type { Writable } from "svelte/store";
+import { dbGet, dbSet } from "./db";
 
-export function load<T>(key: string, defaultValue: T): T {
-    if (typeof localStorage === 'undefined') {
-        return { ...defaultValue }
-    }
+export async function load<T>(key: string, defaultValue: T): Promise<T> {
+    try {
+        const stored = await dbGet<T>(key);
 
-    const stored = localStorage.getItem(key);
-    if (!stored) {
-        return { ...defaultValue }
-    }
+        if (stored) {            
+            if (Array.isArray(stored)) {
+                return stored;
+            }
 
-    const parsed = JSON.parse(stored) as Partial<T>
-    return {
-        ...defaultValue,
-        ...parsed
+            return {
+                ...structuredClone(defaultValue),
+                ...stored,
+            }
+        }
+
+        return structuredClone(defaultValue);
+    } catch {
+        return structuredClone(defaultValue);
     }
 }
 
 export function saveOnChange<T>(store: Writable<T>, key: string) {
     store.subscribe((val) => {
-        if (typeof localStorage === "undefined") return;
-
-        const json = JSON.stringify(val);
-        localStorage.setItem(key, json);
-    })
+        dbSet(key, val).catch(() => {});
+    });
 }
