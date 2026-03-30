@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { initSurfacesStores } from "./lib/stores/surfaces";
+    import { initMaterialsStores } from "./lib/stores/materials";
     import { globalUI, initUIStores } from "./lib/stores/user-interface";
     import TopMenuBar from "./components/Shared/TopMenuBar.svelte";
     import MappingWindow from "./components/Windows/MappingWindow.svelte";
@@ -13,6 +14,7 @@
     onMount(async () => {
         await Promise.all([
             initSurfacesStores(),
+            initMaterialsStores(),
             initUIStores(),
             initRenderingStore(),
         ]);

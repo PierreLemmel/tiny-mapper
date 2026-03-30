@@ -3,8 +3,9 @@
     import { mappingUI } from "../../lib/stores/user-interface";
     import { cn } from "../../lib/core/utils";
     import EditViewPanel from "../EditView/EditViewPanel.svelte";
-    import LibraryPanel from "../Library/LibraryPanel.svelte";
+    import MaterialEditor from "../Materials/MaterialEditor.svelte";
     import SurfacesPanel from "../Surfaces/SurfacesPanel.svelte";
+    import MaterialsPanel from "../Materials/MaterialsPanel.svelte";
 
     export let className: string|undefined = undefined;
 </script>
@@ -26,7 +27,7 @@
             className={cn("h-full", className)}
         >
             <EditViewPanel slot="first" />
-            <LibraryPanel slot="second" />
+            <MaterialsPanel slot="second" />
         </SplitPanels>
         {:else}
         <EditViewPanel />
@@ -41,7 +42,7 @@
     className={cn("h-full", className)}
 >
     <EditViewPanel slot="first" />
-    <LibraryPanel slot="second" />
+    <MaterialsPanel slot="second" />
 </SplitPanels>
 {:else}
 <EditViewPanel />

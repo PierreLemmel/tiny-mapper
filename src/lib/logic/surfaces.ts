@@ -178,6 +178,39 @@ export function createRootSurface(): RootSurface {
     }
 }
 
+export function getSurfaceInsertionPoint(selectedIds: string[]): { parentId: string; positionInChildren: number } {
+    if (selectedIds.length === 0) {
+        return { parentId: "root", positionInChildren: -1 };
+    }
+
+    const lastId = selectedIds[selectedIds.length - 1];
+    const lastSurface = get(surfaceStore(lastId));
+
+    if (!lastSurface) {
+        return { parentId: "root", positionInChildren: -1 };
+    }
+
+    if (lastSurface.type === "Group") {
+        return { parentId: lastId, positionInChildren: -1 };
+    }
+
+    const parentId = lastSurface.parentId;
+
+    if (parentId === "root") {
+        const root = get(rootSurfaces);
+        const idx = root.children.indexOf(lastId);
+        return { parentId, positionInChildren: idx >= 0 ? idx + 1 : -1 };
+    }
+
+    const parent = get(surfaceStore(parentId));
+    if (parent && parent.type === "Group") {
+        const idx = parent.children.indexOf(lastId);
+        return { parentId, positionInChildren: idx >= 0 ? idx + 1 : -1 };
+    }
+
+    return { parentId: "root", positionInChildren: -1 };
+}
+
 
 function collectDescendants(id: string, result: { id: string, positionInChildren: number }[]) {
     const store = surfaceStore(id);

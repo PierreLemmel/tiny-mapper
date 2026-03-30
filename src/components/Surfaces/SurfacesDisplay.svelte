@@ -2,30 +2,33 @@
     import IconButton from "../Shared/IconButton.svelte";
     import QuadIcon from "../../icons/QuadIcon.svelte";
     import GroupIcon from "../../icons/GroupIcon.svelte";
-    import { createGroupSurface, createQuadSurface } from "../../lib/logic/surfaces";
+    import { createGroupSurface, createQuadSurface, getSurfaceInsertionPoint } from "../../lib/logic/surfaces";
     import { cn } from "../../lib/core/utils";
     import SurfaceTreeDisplay from "./SurfaceTree/SurfaceTreeDisplay.svelte";
     import { eventStore } from "../../lib/events/event-store";
+    import { surfaceUI } from "../../lib/stores/user-interface";
+    import { get } from "svelte/store";
 
     export let className: string | undefined = undefined;
 
-
     function handleCreateQuadSurface() {
-        const surface = createQuadSurface();
+        const { parentId, positionInChildren } = getSurfaceInsertionPoint(get(surfaceUI).selectedSurfaces);
+        const surface = createQuadSurface({ parentId }, positionInChildren);
         eventStore.push({
             category: "Surface",
             type: "Created",
-            forwardData: { surface: structuredClone(surface), parentId: "root" },
+            forwardData: { surface: structuredClone(surface) },
             backwardData: { surfaceId: surface.id },
         })
     }
 
     function handleCreateGroupSurface() {
-        const surface = createGroupSurface();
+        const { parentId, positionInChildren } = getSurfaceInsertionPoint(get(surfaceUI).selectedSurfaces);
+        const surface = createGroupSurface({ parentId }, positionInChildren);
         eventStore.push({
             category: "Surface",
             type: "Created",
-            forwardData: { surface: structuredClone(surface), parentId: "root" },
+            forwardData: { surface: structuredClone(surface) },
             backwardData: { surfaceId: surface.id },
         })
     }
