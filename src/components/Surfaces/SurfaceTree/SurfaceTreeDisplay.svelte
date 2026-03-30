@@ -40,6 +40,7 @@
     }
 
     function handleDndFinalize(e: CustomEvent<DndEvent<SurfaceDisplayTreeItem>>) {
+
         const { items: newItems, info } = e.detail;
         items = newItems;
         isDragging = false;
@@ -95,6 +96,7 @@
     on:finalize={handleDndFinalize}
     on:click={handleBackgroundClick}
     on:keydown={handleKeyDown}
+
     role="tree"
     tabindex="-1"
 >

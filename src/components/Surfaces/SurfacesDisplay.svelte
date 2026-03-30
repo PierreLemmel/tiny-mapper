@@ -5,8 +5,30 @@
     import { createGroupSurface, createQuadSurface } from "../../lib/logic/surfaces";
     import { cn } from "../../lib/core/utils";
     import SurfaceTreeDisplay from "./SurfaceTree/SurfaceTreeDisplay.svelte";
+    import { eventStore } from "../../lib/events/event-store";
 
     export let className: string | undefined = undefined;
+
+
+    function handleCreateQuadSurface() {
+        const surface = createQuadSurface();
+        eventStore.push({
+            category: "Surface",
+            type: "Created",
+            forwardData: { surface: structuredClone(surface), parentId: "root" },
+            backwardData: { surfaceId: surface.id },
+        })
+    }
+
+    function handleCreateGroupSurface() {
+        const surface = createGroupSurface();
+        eventStore.push({
+            category: "Surface",
+            type: "Created",
+            forwardData: { surface: structuredClone(surface), parentId: "root" },
+            backwardData: { surfaceId: surface.id },
+        })
+    }
 </script>
 
 <div class={cn(
@@ -17,12 +39,12 @@
 )}
 >
     <div class="flex flex-row flex-wrap gap-2 items-center justify-center my-3">
-        <IconButton variant="primary" onClick={createQuadSurface} size="large">
+        <IconButton variant="primary" onClick={handleCreateQuadSurface} size="large">
             <span class="inline-flex size-6 shrink-0 [&_svg]:size-full" aria-hidden="true">
                 <QuadIcon />
             </span>
         </IconButton>
-        <IconButton variant="primary" onClick={createGroupSurface} size="large">
+        <IconButton variant="primary" onClick={handleCreateGroupSurface} size="large">
             <span class="inline-flex size-6 shrink-0 [&_svg]:size-full" aria-hidden="true">
                 <GroupIcon className="stroke-[1px]" />
             </span>

@@ -1,7 +1,6 @@
 import type { AppEvent } from "../event-store";
-import type { RawColor } from "../../core/color";
-import type { BlendMode, Position, SurfaceFlip } from "../../logic/mapping";
 import type { Surface } from "../../logic/surfaces";
+import type { SurfaceTreeSnapshot } from "./surface-tree-snapshot";
 
 
 export type ApplySurfacePropertyData<K extends keyof Surface> = {
@@ -22,3 +21,22 @@ export type SurfaceColorChanged = SurfacePropertyEvent<"color">;
 export type SurfaceFlipChanged = SurfacePropertyEvent<"flip">;
 export type SurfaceFeatheringChanged = SurfacePropertyEvent<"feathering">;
 
+export type SurfaceCreated = AppEvent<"Surface", "Created", {
+    surface: Surface,
+}, {
+    surfaceId: string,
+}>;
+
+export type SurfaceDeleted = AppEvent<"Surface", "Deleted", {
+    surfaceIds: string[],
+}, {
+    deletedSurfaces: {
+        surface: Surface,
+        positionInChildren: number,
+    }[],
+}>;
+
+export type SurfaceTreeMoved = AppEvent<"Surface", "TreeMoved",
+    SurfaceTreeSnapshot,
+    SurfaceTreeSnapshot
+>;

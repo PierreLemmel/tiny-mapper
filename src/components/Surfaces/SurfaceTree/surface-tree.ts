@@ -2,10 +2,16 @@ import { get, writable } from "svelte/store";
 import { TRIGGERS } from "svelte-dnd-action";
 
 import { eventStore } from "../../../lib/events/event-store";
+import {
+    captureSurfaceTreeSnapshot,
+    surfaceTreeSnapshotsEqual,
+} from "../../../lib/events/surfaces/surface-tree-snapshot";
 import { surfaceUI } from "../../../lib/stores/user-interface";
 import type { PointerModifiers } from "../../../lib/ui/longpress-action";
 import { rootSurfaces, surfaceStore } from "../../../lib/stores/surfaces";
 import { deleteSurfaceAndChildren } from "../../../lib/logic/surfaces";
+import { tick } from "svelte";
+import type { SurfaceDeleted } from "../../../lib/events/surfaces/surfaces-event-types";
 
 
 export type SurfaceDisplayTreeItem = {
@@ -125,10 +131,9 @@ export function deleteSelectedSurfaces() {
 
     const topLevel = getTopLevelSelected(selected);
 
-    const deletedIds = topLevel.flatMap(id => deleteSurfaceAndChildren(id));
-    const deletedSurfaces = deletedIds.map(id => structuredClone(get(surfaceStore(id))));
+    const deletedSurfaces = topLevel.flatMap(id => deleteSurfaceAndChildren(id));
 
-    eventStore.push({
+    eventStore.push<SurfaceDeleted>({
         category: "Surface",
         type: "Deleted",
         forwardData: { surfaceIds: [...topLevel] },
@@ -138,7 +143,7 @@ export function deleteSelectedSurfaces() {
     });
 
 
-    const deletedSet = new Set(deletedIds);
+    const deletedSet = new Set(deletedSurfaces.map(s => s.surface.id));
     surfaceUI.update(ui => ({
         ...ui,
         selectedSurfaces: [],
@@ -167,6 +172,8 @@ export function applyFinalize(
     trigger: TRIGGERS,
     draggedId: string,
 ) {
+    triggerTreeMovedEventDebounced();
+
     const selected = get(surfaceUI).selectedSurfaces;
     const topLevel = getTopLevelSelected(selected);
 
@@ -200,7 +207,6 @@ export function applyFinalize(
 
     const newParentId = zoneParent ?? "root";
 
-    
     for (const id of topLevel) {
         const surface = get(surfaceStore(id));
         if (!surface) continue;
@@ -223,7 +229,10 @@ export function applyFinalize(
             }));
         }
 
-        surface.parentId = newParentId;
+        surfaceStore(id).update(s => ({
+            ...s,
+            parentId: newParentId
+        }));
     }
 
     if (zoneParent) {
@@ -236,6 +245,12 @@ export function applyFinalize(
             }
             return s;
         });
+    }
+    else {
+        rootSurfaces.update(r => ({
+            ...r,
+            children: targetIds
+        }));
     }
 }
 
@@ -263,5 +278,26 @@ function updateZone(zoneParent: string | null, ids: string[]) {
             ...r,
             children: ids
         }));
+    }
+}
+
+let isSnapshotPending = false;
+export async function triggerTreeMovedEventDebounced() {
+    if (isSnapshotPending){
+        return;
+    }
+    isSnapshotPending = true;
+    const before = captureSurfaceTreeSnapshot();
+    await tick();
+    const after = captureSurfaceTreeSnapshot();
+    isSnapshotPending = false;
+
+    if (!surfaceTreeSnapshotsEqual(before, after)) {
+        eventStore.push({
+            category: "Surface",
+            type: "TreeMoved",
+            forwardData: after,
+            backwardData: before,
+        });
     }
 }

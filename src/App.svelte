@@ -17,16 +17,23 @@
             initRenderingStore(),
         ]);
         registerAllEventHandlers();
+
+        (window as any).eventStore = eventStore;
     })
 
     function handleKeydown(e: KeyboardEvent) {
         const isCtrlOrMeta = e.ctrlKey || e.metaKey;
-        if (!isCtrlOrMeta) return;
+        const isShift = e.shiftKey;
+        const isZ = e.key === "z" || e.key === "Z";
+        const isY = e.key === "y" || e.key === "Y";
 
-        if (e.key === "z" && !e.shiftKey) {
+        // Ctrl + Z or Cmd + Z
+        if (isCtrlOrMeta && isZ && !isShift) {
             e.preventDefault();
             eventStore.undo();
-        } else if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+        }
+        // Ctrl + Shift + Z or Cmd + Shift + Z or Ctrl + Y or Cmd + Y
+        else if ((isCtrlOrMeta && isZ && isShift) || (isCtrlOrMeta && isY)) {
             e.preventDefault();
             eventStore.redo();
         }

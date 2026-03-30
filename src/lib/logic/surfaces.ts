@@ -5,7 +5,6 @@ import {
     rootSurfaces,
     surfaceStore,
 } from "../stores/surfaces";
-import { eventStore } from "../events/event-store";
 import type { BlendMode, Position, Scale, Size, SurfaceFlip } from "./mapping";
 import type { RawColor } from "../core/color";
 import { createId } from "../core/utils";
@@ -102,7 +101,42 @@ function createDefaultSurfaceTransform(): SurfaceTransform {
     }
 }
 
-export function createQuadSurface() {
+export function addSurface(surface: Surface, positionInChildren: number = -1) {
+    switch (surface.type) {
+        case "Quad":
+            return createQuadSurface(surface, positionInChildren);
+        case "Group":
+            return createGroupSurface(surface, positionInChildren);
+    }
+}
+
+function bindSurfaceToParent(surface: Surface, positionInChildren: number = -1) {
+    if (surface.parentId === "root") {
+        rootSurfaces.update(r => ({
+            ...r,
+            children: positionInChildren === -1 ?
+                [...r.children, surface.id] :
+                [...r.children.slice(0, positionInChildren), surface.id, ...r.children.slice(positionInChildren)]
+        }));
+    }
+    else {
+        surfaceStore(surface.parentId)
+            .update(s => {
+                if (s.type !== "Group") {
+                    return s
+                }
+
+                return {
+                    ...s,
+                    children: positionInChildren === -1 ?
+                        [...s.children, surface.id] :
+                        [...s.children.slice(0, positionInChildren), surface.id, ...s.children.slice(positionInChildren)]
+                }
+            });
+    }
+}
+
+export function createQuadSurface(values: Partial<Omit<QuadSurface, "type">> = {}, positionInChildren: number = -1) {
     
     const name = nextAvailableName("Quad")
 
@@ -110,46 +144,30 @@ export function createQuadSurface() {
         name,
         type: "Quad",
         ...createSurfaceBase(),
-        transform: createDefaultSurfaceTransform()
+        ...values
     }
 
-    eventStore.push({
-        category: "Surface",
-        type: "Created",
-        forwardData: { surface: structuredClone(surface), parentId: "root" },
-        backwardData: { surfaceId: surface.id },
-    })
-
     addSurfaceToStores(surface.id, surface);
-    rootSurfaces.update(r => ({
-        ...r,
-        children: [...r.children, surface.id]
-    }));
+    bindSurfaceToParent(surface, positionInChildren);
+
+    return surface;
 }
 
-export function createGroupSurface() {
+export function createGroupSurface(values: Partial<Omit<GroupSurface, "type">> = {}, positionInChildren: number = -1) {
     const name = nextAvailableName("Group")
 
     const surface: GroupSurface = {
         name,
         type: "Group",
         ...createSurfaceBase(),
-        children: []
+        children: [],
+        ...values
     }
 
     addSurfaceToStores(surface.id, surface)
+    bindSurfaceToParent(surface, positionInChildren);
 
-    eventStore.push({
-        category: "Surface",
-        type: "Created",
-        forwardData: { surface: structuredClone(surface), parentId: "root" },
-        backwardData: { surfaceId: surface.id },
-    })
-
-    rootSurfaces.update(r => ({
-        ...r,
-        children: [...r.children, surface.id]
-    }));
+    return surface;
 }
 
 export function createRootSurface(): RootSurface {
@@ -161,7 +179,7 @@ export function createRootSurface(): RootSurface {
 }
 
 
-export function collectDescendants(id: string, result: string[]) {
+function collectDescendants(id: string, result: { id: string, positionInChildren: number }[]) {
     const store = surfaceStore(id);
     const surface = get(store);
     if (surface.type === "Group") {
@@ -169,13 +187,20 @@ export function collectDescendants(id: string, result: string[]) {
             collectDescendants(childId, result);
         }
     }
-    result.push(id);
+
+    const parent = get(surfaceStore(surface.parentId));
+    const positionInChildren = parent.type === "Group" ? parent.children.indexOf(id) : -1;
+
+    result.push({ id, positionInChildren });
 }
 
-export function deleteSurfaceAndChildren(id: string): string[] {
+export function deleteSurfaceAndChildren(id: string): { surface: Surface, positionInChildren: number }[] {
 
     const store = surfaceStore(id);
     const surface = get(store);
+
+    const itemsToDelete: { id: string, positionInChildren: number }[] = [];
+    collectDescendants(id, itemsToDelete);
 
     if (surface.parentId !== "root") {
         const parent = surfaceStore(surface.parentId);
@@ -196,10 +221,12 @@ export function deleteSurfaceAndChildren(id: string): string[] {
         }));
     }
 
-    const idsToDelete: string[] = [];
-    collectDescendants(id, idsToDelete);
-    
-    idsToDelete.forEach(deleteSurfaceStore);
 
-    return idsToDelete;
+    const deletedSurfaces = itemsToDelete.map(({ id, positionInChildren }) => ({
+        surface: structuredClone(get(surfaceStore(id))),
+        positionInChildren
+    }));
+    itemsToDelete.forEach(({ id }) => deleteSurfaceStore(id));    
+
+    return deletedSurfaces;
 }

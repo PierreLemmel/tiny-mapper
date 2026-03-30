@@ -25,8 +25,10 @@ export class EventStore {
         return `${category}.${type}`;
     }
 
-    push(event: AppEvent): void {
-        this.events = this.events.slice(0, this.cursor + 1);
+    push<E extends AppEvent>(event: E): void {
+        if (this.cursor < this.events.length - 1) {
+            this.events = this.events.slice(0, this.cursor + 1);
+        }
         this.events.push(event);
         this.cursor++;
         this.listeners.forEach(l => l(event));
@@ -34,6 +36,7 @@ export class EventStore {
 
     undo(): boolean {
         if (!this.canUndo) return false;
+
         const event = this.events[this.cursor];
         const handler = this.handlers.get(this.handlerKey(event.category, event.type));
         if (handler) handler.backward(event.backwardData);

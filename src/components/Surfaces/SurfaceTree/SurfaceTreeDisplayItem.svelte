@@ -74,6 +74,7 @@
     }
 
     function handleChildFinalize(e: CustomEvent<DndEvent<SurfaceDisplayTreeItem>>) {
+        
         const { items: newItems, info } = e.detail;
         childItems = newItems;
         isChildDragging = false;
