@@ -1,5 +1,5 @@
 import { get, readonly, writable, type Writable } from "svelte/store";
-import { createRootMaterial, type RootMaterial, type Material } from "../logic/materials";
+import { createRootMaterial, type RootMaterial, type Material } from "../logic/materials/materials";
 import { load, saveOnChange } from "../core/storage";
 import { DbStores, getDb } from "../core/db";
 

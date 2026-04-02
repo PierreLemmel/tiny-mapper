@@ -1,7 +1,7 @@
 <script lang="ts">
     import GroupIcon from "../../../icons/GroupIcon.svelte";
     import { cn } from "../../../lib/core/utils";
-    import type { Material } from "../../../lib/logic/materials";
+    import type { Material } from "../../../lib/logic/materials/materials";
     import { eventStore } from "../../../lib/events/event-store";
     import NameDisplay from "../../Shared/NameDisplay.svelte";
     import SolidColorIcon from "../../../icons/SolidColorIcon.svelte";

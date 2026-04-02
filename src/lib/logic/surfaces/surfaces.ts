@@ -4,19 +4,29 @@ import {
     getAllSurfaces,
     rootSurfaces,
     surfaceStore,
-} from "../stores/surfaces";
-import type { BlendMode, Position, Scale, Size, SurfaceFlip } from "./mapping";
-import type { RawColor } from "../core/color";
-import { createId } from "../core/utils";
+} from "../../stores/surfaces";
+import type { BlendMode, Position, Scale, SurfaceFlip, UV } from "../mapping";
+import type { RawColor } from "../../core/color";
+import { createId, isWithinArray } from "../../core/utils";
 import { get } from "svelte/store";
 
-const DEFAULT_SIZE: Size = [100, 100]
+const DEFAULT_SCALE: Scale = [1, 1]
+
 
 export type SurfaceTransform = {
     position: Position;
     scale: Scale;
     rotation: number;
 }
+
+
+export type SurfaceGeometry = {
+    vertices: Position[],
+    uvs: UV[],
+    indices: number[]
+}
+
+export type QuadGeometry = SurfaceGeometry
 
 type SurfaceBase = {
     id: "root"|string;
@@ -36,6 +46,7 @@ export type SurfaceType = "Group"|"Quad"|"Root"
 type SurfaceData<T extends SurfaceType, D> = { type: T } & SurfaceBase & D
 
 export type QuadSurface = SurfaceData<"Quad", {
+    geometry: QuadGeometry;
 }>
 
 export type GroupSurface = SurfaceData<"Group", {
@@ -96,12 +107,36 @@ function createSurfaceBase(): Omit<SurfaceBase, "name"> {
 function createDefaultSurfaceTransform(): SurfaceTransform {
     return {
         position: [0, 0],
-        scale: [...DEFAULT_SIZE],
+        scale: [...DEFAULT_SCALE],
         rotation: 0
     }
 }
 
-export function addSurface(surface: Surface, positionInChildren: number = -1) {
+const DEFAULT_QUAD_WIDTH: number = 150;
+const DEFAULT_QUAD_HEIGHT: number = 100;
+
+function createDefaultQuadGeometry(): QuadGeometry {
+    return {
+        vertices: [
+            [-DEFAULT_QUAD_WIDTH / 2, -DEFAULT_QUAD_HEIGHT / 2],
+            [DEFAULT_QUAD_WIDTH / 2, -DEFAULT_QUAD_HEIGHT / 2],
+            [DEFAULT_QUAD_WIDTH / 2, DEFAULT_QUAD_HEIGHT / 2],
+            [-DEFAULT_QUAD_WIDTH / 2, DEFAULT_QUAD_HEIGHT / 2]
+        ],
+        uvs: [
+            [0, 0],
+            [1, 0],
+            [1, 1],
+            [0, 1]
+        ],
+        indices: [
+            0, 1, 2,
+            0, 2, 3
+        ]
+    }
+}
+
+export function addSurface(surface: Surface, positionInChildren: number = -1, bindToParent: boolean = true) {
     switch (surface.type) {
         case "Quad":
             return createQuadSurface(surface, positionInChildren);
@@ -112,18 +147,27 @@ export function addSurface(surface: Surface, positionInChildren: number = -1) {
 
 function bindSurfaceToParent(surface: Surface, positionInChildren: number = -1) {
     if (surface.parentId === "root") {
-        rootSurfaces.update(r => ({
-            ...r,
-            children: positionInChildren === -1 ?
-                [...r.children, surface.id] :
-                [...r.children.slice(0, positionInChildren), surface.id, ...r.children.slice(positionInChildren)]
-        }));
+        rootSurfaces.update(r => {
+            if (isWithinArray(r.children, positionInChildren) && r.children[positionInChildren] === surface.id) {
+                return r;
+            }
+            return {
+                ...r,
+                children: positionInChildren === -1 ?
+                    [...r.children, surface.id] :
+                    [...r.children.slice(0, positionInChildren), surface.id, ...r.children.slice(positionInChildren)]
+            }
+        });
     }
     else {
         surfaceStore(surface.parentId)
             .update(s => {
                 if (s.type !== "Group") {
                     return s
+                }
+
+                if (isWithinArray(s.children, positionInChildren) && s.children[positionInChildren] === surface.id) {
+                    return s;
                 }
 
                 return {
@@ -137,13 +181,13 @@ function bindSurfaceToParent(surface: Surface, positionInChildren: number = -1) 
 }
 
 export function createQuadSurface(values: Partial<Omit<QuadSurface, "type">> = {}, positionInChildren: number = -1) {
-    
     const name = nextAvailableName("Quad")
 
     const surface: QuadSurface = {
         name,
         type: "Quad",
         ...createSurfaceBase(),
+        geometry: createDefaultQuadGeometry(),
         ...values
     }
 
@@ -153,9 +197,10 @@ export function createQuadSurface(values: Partial<Omit<QuadSurface, "type">> = {
     return surface;
 }
 
+
 export function createGroupSurface(values: Partial<Omit<GroupSurface, "type">> = {}, positionInChildren: number = -1) {
     const name = nextAvailableName("Group")
-
+    
     const surface: GroupSurface = {
         name,
         type: "Group",
@@ -163,7 +208,7 @@ export function createGroupSurface(values: Partial<Omit<GroupSurface, "type">> =
         children: [],
         ...values
     }
-
+    
     addSurfaceToStores(surface.id, surface)
     bindSurfaceToParent(surface, positionInChildren);
 
@@ -215,14 +260,15 @@ export function getSurfaceInsertionPoint(selectedIds: string[]): { parentId: str
 function collectDescendants(id: string, result: { id: string, positionInChildren: number }[]) {
     const store = surfaceStore(id);
     const surface = get(store);
+    
     if (surface.type === "Group") {
         for (const childId of surface.children) {
             collectDescendants(childId, result);
         }
     }
 
-    const parent = get(surfaceStore(surface.parentId));
-    const positionInChildren = parent.type === "Group" ? parent.children.indexOf(id) : -1;
+    const siblings = surface.parentId === "root" ? get(rootSurfaces).children : (get(surfaceStore(surface.parentId)) as GroupSurface).children
+    const positionInChildren = siblings.indexOf(id);
 
     result.push({ id, positionInChildren });
 }

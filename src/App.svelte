@@ -10,6 +10,8 @@
     import { initRenderingStore } from "./lib/stores/rendering";
     import { registerAllEventHandlers } from "./lib/events/register-handlers";
     import { eventStore } from "./lib/events/event-store";
+    import { application } from "./lib/stores/application";
+    import LoadingWindow from "./components/Windows/LoadingWindow.svelte";
 
     onMount(async () => {
         await Promise.all([
@@ -21,6 +23,8 @@
         registerAllEventHandlers();
 
         (window as any).eventStore = eventStore;
+
+        application.update(state => ({ ...state, loaded: true }));
     })
 
     function handleKeydown(e: KeyboardEvent) {
@@ -45,6 +49,7 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div class="bg-neutral-950 h-screen w-dvw flex flex-col">
+    {#if $application.loaded}
     <TopMenuBar tabs={["Mapping", "Outputs", "Settings"]} bind:activeTab={$globalUI.activeTab} />
 
     <div class="flex-1 min-h-0">
@@ -56,4 +61,7 @@
             <SettingsWindow />
         {/if}
     </div>
+    {:else}
+    <LoadingWindow />
+    {/if}
 </div>

@@ -6,7 +6,7 @@ import { mainRendering } from "../stores/rendering";
 
 let cameraCount = 0;
 
-const CAMERA_Z_POSITION = 5;
+export const CAMERA_Z_POSITION = 100_000;
 
 export class MainCamera {
     private _camera: THREE.OrthographicCamera;
@@ -31,7 +31,7 @@ export class MainCamera {
 
         const [x, y] = position;
 
-        this._camera = new THREE.OrthographicCamera(x - width / 2, x + width / 2, y + height / 2, y - height / 2, 0.1, 1000);
+        this._camera = new THREE.OrthographicCamera(x - width / 2, x + width / 2, y + height / 2, y - height / 2, 0.1, CAMERA_Z_POSITION);
         this._camera.position.set(x, y, CAMERA_Z_POSITION);
 
         cameraCount++;

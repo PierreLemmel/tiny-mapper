@@ -8,7 +8,7 @@ export type SurfaceTreeSnapshot = {
 };
 
 
-export function captureSurfaceTreeSnapshot(): SurfaceTreeSnapshot {
+export function surfaceTreeSnapshot(): SurfaceTreeSnapshot {
     const root = get(rootSurfaces);
     const groupChildren: Record<string, string[]> = {};
     for (const s of getAllSurfaces()) {

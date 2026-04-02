@@ -1,7 +1,7 @@
 import { eventStore } from "../event-store";
-import { addSurface, deleteSurfaceAndChildren, type Surface } from "../../logic/surfaces";
-import type { ApplySurfacePropertyData, SurfaceCreated, SurfaceDeleted, SurfacePropertyEvent, SurfaceTreeMoved } from "./surfaces-event-types";
-import { applySurfaceTreeSnapshot } from "./surface-tree-snapshot";
+import { addSurface, deleteSurfaceAndChildren, type Surface, type SurfaceTransform } from "../../logic/surfaces/surfaces";
+import type { ApplySurfacePropertyData, ApplySurfaceTransformPropertyData, SurfaceCreated, SurfaceDeleted, SurfacePropertyEvent, SurfaceTransformPropertyEvent, SurfaceTreeMoved } from "./surfaces-event-types";
+import { applySurfaceTreeSnapshot } from "../../logic/surfaces/surface-tree-snapshot";
 import { surfaceStore } from "../../stores/surfaces";
 import { surfaceUI } from "../../stores/user-interface";
 
@@ -15,6 +15,20 @@ function applySurfaceProperty<K extends keyof Surface>(data: ApplySurfacePropert
     });
 }
 
+function applySurfaceTransformProperty<K extends keyof SurfaceTransform>(data: ApplySurfaceTransformPropertyData<K>) {
+    const { surfaceId, ...property } = data;
+
+    surfaceStore(data.surfaceId).update(s => {
+        
+        const transform: SurfaceTransform = {
+            ...structuredClone(s.transform),
+            ...property
+        };
+
+        return { ...s, transform };
+    });
+}
+
 function registerSurfacePropertyHandler<K extends keyof Surface>(
     property: K,
     forward: (data: ApplySurfacePropertyData<K>) => void,
@@ -25,6 +39,18 @@ function registerSurfacePropertyHandler<K extends keyof Surface>(
         backward
     );
 }
+
+function registerSurfaceTransformPropertyHandler<K extends keyof SurfaceTransform>(
+    property: K,
+    forward: (data: ApplySurfaceTransformPropertyData<K>) => void,
+    backward: (data: ApplySurfaceTransformPropertyData<K>) => void
+) {
+    eventStore.registerHandler<SurfaceTransformPropertyEvent<K>>("Surface", `${property.charAt(0).toUpperCase() + property.slice(1)}Changed` as `${Capitalize<K>}Changed`,
+        forward,
+        backward
+    );
+}
+
 
 export function registerSurfacesEventHandlers() {
     registerSurfacePropertyHandler(
@@ -69,6 +95,25 @@ export function registerSurfacesEventHandlers() {
         (data) => applySurfaceProperty(data)
     );
 
+    
+    registerSurfaceTransformPropertyHandler(
+        "position",
+        (data) => applySurfaceTransformProperty(data),
+        (data) => applySurfaceTransformProperty(data)
+    )
+
+    registerSurfaceTransformPropertyHandler(
+        "scale",
+        (data) => applySurfaceTransformProperty(data),
+        (data) => applySurfaceTransformProperty(data)
+    );
+
+    registerSurfaceTransformPropertyHandler(
+        "rotation",
+        (data) => applySurfaceTransformProperty(data),
+        (data) => applySurfaceTransformProperty(data)
+    );
+
     eventStore.registerHandler<SurfaceCreated>(
         "Surface",
         "Created",
@@ -91,7 +136,7 @@ export function registerSurfacesEventHandlers() {
             }
         },
         (data) => {
-            for (const { surface, positionInChildren } of data.deletedSurfaces) {
+            for (const { surface, positionInChildren } of data.deletedSurfaces.reverse()) {
                 addSurface(surface, positionInChildren)
             }
         }

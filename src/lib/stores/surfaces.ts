@@ -1,5 +1,5 @@
 import { get, readonly, writable, type Writable } from "svelte/store";
-import { createRootSurface, type RootSurface, type Surface } from "../logic/surfaces";
+import { createRootSurface, type RootSurface, type Surface } from "../logic/surfaces/surfaces";
 import { load, saveOnChange } from "../core/storage";
 import { DbStores, getDb } from "../core/db";
 
@@ -51,6 +51,7 @@ export async function initSurfacesStores() {
 
 const surfacesInternal = writable<{ [id: string]: Surface }>({});
 export const surfaces = readonly(surfacesInternal);
+
 
 export function getAllSurfaces(): Surface[] {
     return Array.from(surfaceStores.values()).map(store => get(store));

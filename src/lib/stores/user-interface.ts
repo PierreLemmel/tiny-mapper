@@ -38,6 +38,7 @@ export type SurfaceUIData = {
 
     transform: {
         open: boolean;
+        lockScale: boolean;
     }
 
     geometry: {
@@ -97,6 +98,7 @@ const DEFAULT_SURFACE_UI_DATA: SurfaceUIData = {
     },
     transform: {
         open: false,
+        lockScale: true,
     },
     geometry: {
         open: false,

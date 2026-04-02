@@ -1,7 +1,7 @@
 import { eventStore } from "../event-store";
-import { addMaterial, deleteMaterialAndChildren, type Material } from "../../logic/materials";
+import { addMaterial, deleteMaterialAndChildren, type Material } from "../../logic/materials/materials";
 import type { ApplyMaterialPropertyData, MaterialCreated, MaterialDeleted, MaterialPropertyEvent, MaterialTreeMoved } from "./materials-event-types";
-import { applyMaterialTreeSnapshot } from "./material-tree-snapshot";
+import { applyMaterialTreeSnapshot } from "../../logic/materials/material-tree-snapshot";
 import { materialStore } from "../../stores/materials";
 import { materialUI } from "../../stores/user-interface";
 
@@ -53,7 +53,7 @@ export function registerMaterialsEventHandlers() {
             }
         },
         (data) => {
-            for (const { material, positionInChildren } of data.deletedMaterials) {
+            for (const { material, positionInChildren } of data.deletedMaterials.reverse()) {
                 addMaterial(material, positionInChildren);
             }
         }

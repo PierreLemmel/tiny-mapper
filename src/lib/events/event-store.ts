@@ -19,7 +19,10 @@ export class EventStore {
     private events: AppEvent[] = [];
     private cursor: number = -1;
     private handlers = new Map<string, EventHandler>();
-    private listeners = new Set<(event: AppEvent) => void>();
+
+    private pushListeners = new Set<(event: AppEvent) => void>();
+    private undoListeners = new Set<(event: AppEvent) => void>();
+    private redoListeners = new Set<(event: AppEvent) => void>();
 
     private handlerKey(category: string, type: string): string {
         return `${category}.${type}`;
@@ -31,7 +34,7 @@ export class EventStore {
         }
         this.events.push(event);
         this.cursor++;
-        this.listeners.forEach(l => l(event));
+        this.pushListeners.forEach(l => l(event));
     }
 
     undo(): boolean {
@@ -41,6 +44,7 @@ export class EventStore {
         const handler = this.handlers.get(this.handlerKey(event.category, event.type));
         if (handler) handler.backward(event.backwardData);
         this.cursor--;
+        this.undoListeners.forEach(l => l(event));
         return true;
     }
 
@@ -50,6 +54,7 @@ export class EventStore {
         const event = this.events[this.cursor];
         const handler = this.handlers.get(this.handlerKey(event.category, event.type));
         if (handler) handler.forward(event.forwardData);
+        this.redoListeners.forEach(l => l(event));
         return true;
     }
 
@@ -62,10 +67,20 @@ export class EventStore {
         this.handlers.set(this.handlerKey(category, type), { forward, backward });
     }
 
-    subscribe(listener: (event: AppEvent) => void): () => void {
-        this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
+    on<E extends "push"|"undo"|"redo">(event: E, listener: (event: AppEvent) => void): () => void {
+        switch (event) {
+            case "push":
+                this.pushListeners.add(listener);
+                return () => this.pushListeners.delete(listener);
+            case "undo":
+                this.undoListeners.add(listener);
+                return () => this.undoListeners.delete(listener);
+            case "redo":
+                this.redoListeners.add(listener);
+                return () => this.redoListeners.delete(listener);
+        }
     }
+
 
     get canUndo(): boolean {
         return this.cursor >= 0;

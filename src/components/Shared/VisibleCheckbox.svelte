@@ -23,7 +23,12 @@
         visible ? "text-neutral-100" : "text-neutral-500",
         className
     )}
-    on:click={() => { if (!disabled) { onCommit(visible, !visible); visible = !visible; } }}
+    on:click|stopPropagation={() => {
+        if (!disabled) {
+            onCommit(visible, !visible);
+            visible = !visible;
+        }
+    }}
 >
     <span class="inline-flex size-4.5 shrink-0 [&_svg]:size-full" aria-hidden="true">
         {#if visible}

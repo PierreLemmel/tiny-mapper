@@ -33,3 +33,7 @@ export function degreesToRadians(degrees: number): number {
 export function radiansToDegrees(radians: number): number {
     return radians * 180 / Math.PI;
 }
+
+export function isWithinArray(array: any[], index: number): boolean {
+    return index >= 0 && index < array.length;
+}

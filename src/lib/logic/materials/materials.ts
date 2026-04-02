@@ -1,8 +1,7 @@
-
-import { createId } from "../core/utils";
+import { createId, isWithinArray } from "../../core/utils";
 import { get } from "svelte/store";
-import { addMaterialToStores, deleteMaterialStore, getAllMaterials, materialStore, rootMaterials } from "../stores/materials";
-import type { RawColor } from "../core/color";
+import { addMaterialToStores, deleteMaterialStore, getAllMaterials, materialStore, rootMaterials } from "../../stores/materials";
+import type { RawColor } from "../../core/color";
 
 type MaterialBase = {
     id: string;
@@ -77,17 +76,26 @@ export function addMaterial(material: Material, positionInChildren: number = -1)
 
 function bindMaterialToParent(material: Material, positionInChildren: number = -1) {
     if (material.parentId === "root") {
-        rootMaterials.update(r => ({
+        rootMaterials.update(r => {
+            if (isWithinArray(r.children, positionInChildren) && r.children[positionInChildren] === material.id) {
+                return r;
+            }
+            return {
             ...r,
-            children: positionInChildren === -1 ?
-                [...r.children, material.id] :
-                [...r.children.slice(0, positionInChildren), material.id, ...r.children.slice(positionInChildren)]
-        }));
+                children: positionInChildren === -1 ?
+                    [...r.children, material.id] :
+                    [...r.children.slice(0, positionInChildren), material.id, ...r.children.slice(positionInChildren)]
+            }
+        });
     }
     else {
         materialStore(material.parentId)
             .update(m => {
                 if (m.type !== "Group") {
+                    return m;
+                }
+
+                if (isWithinArray(m.children, positionInChildren) && m.children[positionInChildren] === material.id) {
                     return m;
                 }
 
@@ -180,16 +188,16 @@ export function getMaterialInsertionPoint(selectedIds: string[]): { parentId: st
 function collectDescendants(id: string, result: { id: string, positionInChildren: number }[]) {
     const store = materialStore(id);
     const material = get(store);
+
     if (material.type === "Group") {
         for (const childId of material.children) {
             collectDescendants(childId, result);
         }
     }
 
-    const parentStore = materialStore(material.parentId);
-    const parent = parentStore ? get(parentStore) : null;
-    const positionInChildren = parent && parent.type === "Group" ? parent.children.indexOf(id) : -1;
-
+    const siblings = material.parentId === "root" ? get(rootMaterials).children : (get(materialStore(material.parentId)) as GroupMaterial).children
+    const positionInChildren = siblings.indexOf(id);
+    
     result.push({ id, positionInChildren });
 }
 

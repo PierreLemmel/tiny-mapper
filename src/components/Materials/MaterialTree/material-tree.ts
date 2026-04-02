@@ -5,11 +5,11 @@ import { eventStore } from "../../../lib/events/event-store";
 import {
     captureMaterialTreeSnapshot,
     materialTreeSnapshotsEqual,
-} from "../../../lib/events/materials/material-tree-snapshot";
+} from "../../../lib/logic/materials/material-tree-snapshot";
 import { materialUI } from "../../../lib/stores/user-interface";
 import type { PointerModifiers } from "../../../lib/ui/longpress-action";
 import { rootMaterials, materialStore } from "../../../lib/stores/materials";
-import { deleteMaterialAndChildren } from "../../../lib/logic/materials";
+import { deleteMaterialAndChildren } from "../../../lib/logic/materials/materials";
 import { tick } from "svelte";
 import type { MaterialDeleted } from "../../../lib/events/materials/materials-event-types";
 

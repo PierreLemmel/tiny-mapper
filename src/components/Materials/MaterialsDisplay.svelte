@@ -1,7 +1,7 @@
 <script lang="ts">
     import IconButton from "../Shared/IconButton.svelte";
     import GroupIcon from "../../icons/GroupIcon.svelte";
-    import { createGroupMaterial, createSolidColorMaterial, getMaterialInsertionPoint } from "../../lib/logic/materials";
+    import { createGroupMaterial, createSolidColorMaterial, getMaterialInsertionPoint } from "../../lib/logic/materials/materials";
     import { cn } from "../../lib/core/utils";
     import MaterialTreeDisplay from "./MaterialTree/MaterialTreeDisplay.svelte";
     import { eventStore } from "../../lib/events/event-store";

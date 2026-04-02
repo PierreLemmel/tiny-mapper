@@ -1,6 +1,6 @@
 import type { AppEvent } from "../event-store";
-import type { Material } from "../../logic/materials";
-import type { MaterialTreeSnapshot } from "./material-tree-snapshot";
+import type { Material } from "../../logic/materials/materials";
+import type { MaterialTreeSnapshot } from "../../logic/materials/material-tree-snapshot";
 
 export type ApplyMaterialPropertyData<K extends keyof Material> = {
     materialId: string,

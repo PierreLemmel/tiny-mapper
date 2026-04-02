@@ -3,13 +3,13 @@ import { TRIGGERS } from "svelte-dnd-action";
 
 import { eventStore } from "../../../lib/events/event-store";
 import {
-    captureSurfaceTreeSnapshot,
+    surfaceTreeSnapshot,
     surfaceTreeSnapshotsEqual,
-} from "../../../lib/events/surfaces/surface-tree-snapshot";
+} from "../../../lib/logic/surfaces/surface-tree-snapshot";
 import { surfaceUI } from "../../../lib/stores/user-interface";
 import type { PointerModifiers } from "../../../lib/ui/longpress-action";
 import { rootSurfaces, surfaceStore } from "../../../lib/stores/surfaces";
-import { deleteSurfaceAndChildren } from "../../../lib/logic/surfaces";
+import { deleteSurfaceAndChildren } from "../../../lib/logic/surfaces/surfaces";
 import { tick } from "svelte";
 import type { SurfaceDeleted } from "../../../lib/events/surfaces/surfaces-event-types";
 
@@ -287,9 +287,9 @@ export async function triggerTreeMovedEventDebounced() {
         return;
     }
     isSnapshotPending = true;
-    const before = captureSurfaceTreeSnapshot();
+    const before = surfaceTreeSnapshot();
     await tick();
-    const after = captureSurfaceTreeSnapshot();
+    const after = surfaceTreeSnapshot();
     isSnapshotPending = false;
 
     if (!surfaceTreeSnapshotsEqual(before, after)) {

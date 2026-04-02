@@ -1,6 +1,6 @@
 import type { AppEvent } from "../event-store";
-import type { Surface } from "../../logic/surfaces";
-import type { SurfaceTreeSnapshot } from "./surface-tree-snapshot";
+import type { Surface, SurfaceTransform } from "../../logic/surfaces/surfaces";
+import type { SurfaceTreeSnapshot } from "../../logic/surfaces/surface-tree-snapshot";
 
 
 export type ApplySurfacePropertyData<K extends keyof Surface> = {
@@ -8,10 +8,21 @@ export type ApplySurfacePropertyData<K extends keyof Surface> = {
 } & Pick<Surface, K>;
 
 
+export type ApplySurfaceTransformPropertyData<K extends keyof SurfaceTransform> = {
+    surfaceId: string,
+} & Pick<SurfaceTransform, K>;
+
 export type SurfacePropertyEvent<K extends keyof Surface> = AppEvent<"Surface", `${Capitalize<K>}Changed`,
     ApplySurfacePropertyData<K>,
     ApplySurfacePropertyData<K>>;
 
+export type SurfaceTransformPropertyEvent<K extends keyof SurfaceTransform> = AppEvent<"Surface", `${Capitalize<K>}Changed`,
+    ApplySurfaceTransformPropertyData<K>,
+    ApplySurfaceTransformPropertyData<K>>;
+
+export type SurfacePositionChanged = SurfaceTransformPropertyEvent<"position">;
+export type SurfaceScaleChanged = SurfaceTransformPropertyEvent<"scale">;
+export type SurfaceRotationChanged = SurfaceTransformPropertyEvent<"rotation">;
 
 export type SurfaceNameChanged = SurfacePropertyEvent<"name">;
 export type SurfaceEnabledChanged = SurfacePropertyEvent<"enabled">;

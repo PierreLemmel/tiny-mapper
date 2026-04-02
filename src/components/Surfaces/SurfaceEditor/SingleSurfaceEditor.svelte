@@ -2,7 +2,7 @@
     import GroupIcon from "../../../icons/GroupIcon.svelte";
     import QuadIcon from "../../../icons/QuadIcon.svelte";
     import { cn } from "../../../lib/core/utils";
-    import type { Surface } from "../../../lib/logic/surfaces";
+    import type { Surface } from "../../../lib/logic/surfaces/surfaces";
     import { eventStore } from "../../../lib/events/event-store";
     import { surfaceUI } from "../../../lib/stores/user-interface";
     import BlendModeEditor from "../../Shared/BlendModeEditor.svelte";
@@ -15,6 +15,7 @@
     import Slider from "../../Shared/Slider.svelte";
     import SurfaceFlipEditor from "../../Shared/SurfaceFlipEditor.svelte";
     import VisibleCheckbox from "../../Shared/VisibleCheckbox.svelte";
+    import ScaleEditor from "../../Shared/ScaleEditor.svelte";
 
     export let className: string|undefined = undefined;
 
@@ -142,6 +143,17 @@
                     category: "Surface", type: "RotationChanged",
                     forwardData: { surfaceId: surface.id, rotation: newVal },
                     backwardData: { surfaceId: surface.id, rotation: oldVal },
+                })}
+            />
+
+            <ScaleEditor
+                label="Scale"
+                bind:value={surface.transform.scale}
+                bind:lockScale={$surfaceUI.transform.lockScale}
+                onCommit={(oldVal, newVal) => eventStore.push({
+                    category: "Surface", type: "ScaleChanged",
+                    forwardData: { surfaceId: surface.id, scale: newVal },
+                    backwardData: { surfaceId: surface.id, scale: oldVal },
                 })}
             />
         </div>

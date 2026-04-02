@@ -6,7 +6,6 @@
     import { cn } from "../../../lib/core/utils";
     import { eventStore } from "../../../lib/events/event-store";
     import { materialUI } from "../../../lib/stores/user-interface";
-    import { longpress, type PointerModifiers } from "../../../lib/ui/longpress-action";
     import NameDisplay from "../../Shared/NameDisplay.svelte";
 
     import {
@@ -80,12 +79,7 @@
         clearMultiDrag();
     }
 
-    function handleLongPress(modifiers: PointerModifiers) {
-        if (!material) return;
-        selectMaterial(id, modifiers);
-    }
-
-    function handleDblClick(e: MouseEvent) {
+    function handleClick(e: MouseEvent) {
         if (!material) return;
         selectMaterial(id, { ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, metaKey: e.metaKey });
     }
@@ -97,9 +91,8 @@
         selected && "bg-primary-400/10",
         isDragCompanion && "opacity-25",
     )}
-    use:longpress={{ onLongPress: handleLongPress }}
-    on:dblclick|stopPropagation={handleDblClick}
-    on:click|stopPropagation
+    on:dblclick|stopPropagation={handleClick}
+    on:click|stopPropagation={handleClick}
     on:keydown|stopPropagation
     role="treeitem"
     aria-selected={selected}

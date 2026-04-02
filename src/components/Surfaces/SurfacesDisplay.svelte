@@ -2,7 +2,7 @@
     import IconButton from "../Shared/IconButton.svelte";
     import QuadIcon from "../../icons/QuadIcon.svelte";
     import GroupIcon from "../../icons/GroupIcon.svelte";
-    import { createGroupSurface, createQuadSurface, getSurfaceInsertionPoint } from "../../lib/logic/surfaces";
+    import { createGroupSurface, createQuadSurface, getSurfaceInsertionPoint } from "../../lib/logic/surfaces/surfaces";
     import { cn } from "../../lib/core/utils";
     import SurfaceTreeDisplay from "./SurfaceTree/SurfaceTreeDisplay.svelte";
     import { eventStore } from "../../lib/events/event-store";

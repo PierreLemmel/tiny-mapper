@@ -6,6 +6,7 @@
     import { renderingUI } from "../../lib/stores/user-interface";
     import { cn } from "../../lib/core/utils";
     import { mainRendering } from "../../lib/stores/rendering";
+    import { application } from "../../lib/stores/application";
 
     let container: HTMLDivElement;
     let canvas: HTMLCanvasElement;
@@ -28,7 +29,6 @@
     let timeBetweenFrames: number;
     let geometryCount: number;
     let textureCount: number;
-    let rendererCount: number;
 
     onMount(() => {
         
@@ -66,6 +66,10 @@
         loop();
     });
 
+    $: if ($application.loaded) {
+        scene.initializeSceneIfNeeded();
+    }
+    
     onDestroy(() => {
         cancelAnimationFrame(rafId);
         resizeObserver?.disconnect();
