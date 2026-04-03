@@ -7,7 +7,6 @@ import {
     surfaceTreeSnapshotsEqual,
 } from "../../../lib/logic/surfaces/surface-tree-snapshot";
 import { surfaceUI } from "../../../lib/stores/user-interface";
-import type { PointerModifiers } from "../../../lib/ui/longpress-action";
 import { rootSurfaces, surfaceStore } from "../../../lib/stores/surfaces";
 import { deleteSurfaceAndChildren } from "../../../lib/logic/surfaces/surfaces";
 import { tick } from "svelte";
@@ -50,7 +49,13 @@ function getFlatVisualOrder(): string[] {
     return result;
 }
 
-export function selectSurface(id: string, modifiers: PointerModifiers) {
+type SelectSurfaceModifiers = {
+    ctrlKey: boolean;
+    metaKey: boolean;
+    shiftKey: boolean;
+}
+
+export function selectSurface(id: string, modifiers: SelectSurfaceModifiers) {
     const isCtrl = modifiers.ctrlKey || modifiers.metaKey;
 
     if (modifiers.shiftKey && selectionAnchor) {

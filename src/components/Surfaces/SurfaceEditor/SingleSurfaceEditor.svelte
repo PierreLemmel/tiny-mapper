@@ -108,19 +108,17 @@
                 })}
             />
 
-            {#if surface.type === "Quad"}
-                <Slider
-                    label="Feathering"
-                    bind:value={surface.feathering}
-                    options={{ type: 'percentage' }}
-                    color="primary"
-                    onCommit={(oldVal, newVal) => eventStore.push({
-                        category: "Surface", type: "FeatheringChanged",
-                        forwardData: { surfaceId: surface.id, feathering: newVal },
-                        backwardData: { surfaceId: surface.id, feathering: oldVal },
-                    })}
-                />
-            {/if}
+            <Slider
+                label="Feathering"
+                bind:value={surface.feathering}
+                options={{ type: 'percentage' }}
+                color="primary"
+                onCommit={(oldVal, newVal) => eventStore.push({
+                    category: "Surface", type: "FeatheringChanged",
+                    forwardData: { surfaceId: surface.id, feathering: newVal },
+                    backwardData: { surfaceId: surface.id, feathering: oldVal },
+                })}
+            />
         </div>
     </Foldable>
 

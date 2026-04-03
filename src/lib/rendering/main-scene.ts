@@ -10,22 +10,26 @@ import { flipSurface, indicesToUint32Array, positionsToFloat32Array, uvsToFloat3
 import { degreesToRadians } from "../core/utils";
 import { CAMERA_Z_POSITION } from "./main-camera";
 import { eventStore, type AppEvent } from "../events/event-store";
+import { surfaceUI } from "../stores/user-interface";
 
 type QuadSurfaceRenderData = {
     mesh: THREE.Mesh;
     material: THREE.ShaderMaterial;
     geometry: THREE.BufferGeometry;
+    unsubscribe: () => void;
 };
 
 type GroupSurfaceRenderData = {
     group: THREE.Group;
     hierarchyData: HierarchyData;
+    unsubscribe: () => void;
 };
 
 type HierarchyData = Readonly<{
     opacity: number;
     color: RawColor;
     flip: SurfaceFlip;
+    feathering: number;
 }>
 
 function defaultHierarchyData(): HierarchyData {
@@ -33,6 +37,7 @@ function defaultHierarchyData(): HierarchyData {
         opacity: 1,
         color: [1, 1, 1, 1],
         flip: [false, false],
+        feathering: 0,
     };
 }
 
@@ -45,6 +50,8 @@ export class MainScene {
     private groupSurfaceMap = new Map<string, GroupSurfaceRenderData>();
     private root: THREE.Group = new THREE.Group();
 
+    private selectionHelperMap = new Map<string, THREE.BoxHelper>();
+    private unsubscribeSelectionUI: () => void = () => {};           
     public get content(): THREE.Scene {
         return this.scene;
     }
@@ -66,7 +73,11 @@ export class MainScene {
         this.scene.add(this.root);
 
         const rootHierarchyData: HierarchyData = defaultHierarchyData();
-        this.groupSurfaceMap.set("root", { group: this.root, hierarchyData: rootHierarchyData });
+        this.groupSurfaceMap.set("root", {
+            group: this.root,
+            hierarchyData: rootHierarchyData,
+            unsubscribe: () => {}
+        });
         
         for (const rootId of get(rootSurfaces).children) {            
             this.createSurface(this.root, rootHierarchyData, rootId);
@@ -74,10 +85,13 @@ export class MainScene {
 
         this.sortSurfaces();
 
-        
         eventStore.on("push", e => this.handleEvent(e));
         eventStore.on("undo", e => this.handleEvent(e));
         eventStore.on("redo", e => this.handleEvent(e));
+
+        this.unsubscribeSelectionUI = surfaceUI.subscribe(ui => {
+            this.updateSelectionHelpers(ui.selectedSurfaces);
+        });
     }
 
     private handleEvent(event: AppEvent) {
@@ -119,30 +133,37 @@ export class MainScene {
         const {
             color,
             opacity,
-            flip
+            flip,
+            feathering,
         } = surface;
 
         const newHierarchyData: HierarchyData = {
             opacity: hierarchyData.opacity * opacity,
             color: multiplyColors(hierarchyData.color, color),
             flip: flipSurface(hierarchyData.flip, flip),
+            feathering: Math.max(hierarchyData.feathering, feathering),
         };
 
-        const groupSurfaceRenderData: GroupSurfaceRenderData = { group, hierarchyData: newHierarchyData };
+
+        const groupSurfaceRenderData: GroupSurfaceRenderData = {
+            group,
+            hierarchyData: newHierarchyData,
+            unsubscribe: () => {}
+        };
         this.groupSurfaceMap.set(surface.id, groupSurfaceRenderData);
 
-        for (const childId of surface.children) {
-            this.createSurface(group, newHierarchyData, childId);
-        }
 
-        this.applyGroupProperties(surface, groupSurfaceRenderData, hierarchyData);
-
-        store.subscribe(s => {
-
+        const unsubscribe = store.subscribe(s => {
             const parentData = this.groupSurfaceMap.get(surface.parentId)!.hierarchyData;
 
             this.applyGroupProperties(s, groupSurfaceRenderData, parentData);
         });
+
+        groupSurfaceRenderData.unsubscribe = unsubscribe;
+
+        for (const childId of surface.children) {
+            this.createSurface(group, newHierarchyData, childId);
+        }
     }
 
     private createQuadSurface(surface: QuadSurface, store: Writable<QuadSurface>, parent: THREE.Group) {
@@ -175,15 +196,21 @@ export class MainScene {
         const mesh = new THREE.Mesh(geometry, material);
 
         parent.add(mesh);
-        const quadSurfaceRenderData: QuadSurfaceRenderData = { mesh, material, geometry };
+        
+        const quadSurfaceRenderData: QuadSurfaceRenderData = { mesh, material, geometry, unsubscribe: () => {} };
         this.quadSurfaceMap.set(surface.id, quadSurfaceRenderData);
 
-        store.subscribe(s => {
+        const unsubscribe = store.subscribe(s => {
             this.applyQuadProperties(s, quadSurfaceRenderData);
         });
+        quadSurfaceRenderData.unsubscribe = unsubscribe;
     }
 
-    private applyQuadProperties(surface: QuadSurface, quadSurfaceRenderData: QuadSurfaceRenderData) {
+    private applyQuadProperties(surface: QuadSurface, quadSurfaceRenderData: QuadSurfaceRenderData | undefined) {
+        if (!quadSurfaceRenderData) {
+            return;
+        }
+
         const {
             mesh,
             material
@@ -213,6 +240,7 @@ export class MainScene {
             color: parentColor,
             opacity: parentOpacity,
             flip: parentFlip,
+            feathering: parentFeathering,
         } = parent.hierarchyData;
 
         const color = multiplyColors(parentColor, surfaceColor);
@@ -226,11 +254,15 @@ export class MainScene {
 
         material.uniforms.uColor.value.set(new THREE.Color(color[0], color[1], color[2]));
         material.uniforms.uOpacity.value = opacity;
-        material.uniforms.uFeathering.value = feathering;
+        material.uniforms.uFeathering.value = Math.max(parentFeathering, feathering);
 
     }
     
-    private applyGroupProperties(surface: GroupSurface, groupSurfaceRenderData: GroupSurfaceRenderData, hierarchyData: HierarchyData) {
+    private applyGroupProperties(surface: GroupSurface, groupSurfaceRenderData: GroupSurfaceRenderData | undefined, hierarchyData: HierarchyData) {
+        if (!groupSurfaceRenderData) {
+            return;
+        }
+
         
         const newHierarchyData = this.recalculateHierarchyData(surface, hierarchyData);
 
@@ -253,10 +285,10 @@ export class MainScene {
             const surface = get(surfaceStore(childId));
 
             if (surface.type === "Quad") {
-                this.applyQuadProperties(surface, this.quadSurfaceMap.get(childId)!);
+                this.applyQuadProperties(surface, this.quadSurfaceMap.get(childId));
             }
             else if (surface.type === "Group") {
-                this.applyGroupProperties(surface, this.groupSurfaceMap.get(childId)!, newHierarchyData);
+                this.applyGroupProperties(surface, this.groupSurfaceMap.get(childId), newHierarchyData);
             }
         }
     }
@@ -284,23 +316,27 @@ export class MainScene {
             const {
                 mesh,
                 material,
-                geometry
+                geometry,
+                unsubscribe
             } = this.quadSurfaceMap.get(id)!;
 
             mesh.removeFromParent();
             material.dispose();
             geometry.dispose();
-            mesh.clear()
+            mesh.clear();
+            unsubscribe();
 
             this.quadSurfaceMap.delete(id);
         }
 
         for (const id of existingGroups) {
             const {
-                group
+                group,
+                unsubscribe
             } = this.groupSurfaceMap.get(id)!;
 
             group.removeFromParent();
+            unsubscribe();
             this.groupSurfaceMap.delete(id);
         }
     }
@@ -358,12 +394,14 @@ export class MainScene {
             color,
             opacity,
             flip,
+            feathering,
         } = surface;
 
         const newHierarchyData: HierarchyData = {
             opacity: parentData.opacity * opacity,
             color: multiplyColors(parentData.color, color),
             flip: flipSurface(parentData.flip, flip),
+            feathering: Math.max(parentData.feathering, feathering),
         };
 
         const item = this.groupSurfaceMap.get(surface.id)!;
@@ -406,11 +444,51 @@ export class MainScene {
         }
     }
 
+    private updateSelectionHelpers(selectedIds: string[]) {
+        for (const helper of this.selectionHelperMap.values()) {
+            helper.removeFromParent();
+            helper.geometry.dispose();
+            (helper.material as THREE.LineBasicMaterial).dispose();
+        }
+        this.selectionHelperMap.clear();
+
+        for (const id of selectedIds) {
+            const object = this.quadSurfaceMap.get(id)?.mesh ?? this.groupSurfaceMap.get(id)?.group;
+            if (!object) continue;
+
+            const helper = new THREE.BoxHelper(object, 0xffffff);
+            (helper.material as THREE.LineBasicMaterial).depthTest = false;
+            (helper.material as THREE.LineBasicMaterial).depthWrite = false;
+            this.scene.add(helper);
+            this.selectionHelperMap.set(id, helper);
+        }
+    }
+
+    public tickSelectionHelpers() {
+        for (const helper of this.selectionHelperMap.values()) {
+            helper.update();
+        }
+    }
+
     private static _instance: MainScene;
     public static instance() {
         if (!this._instance) {
             this._instance = new MainScene();
         }
         return this._instance;
+    }
+
+    public dispose() {
+        this.unsubscribeSelectionUI();
+
+        for (const quadSurfaceRenderData of this.quadSurfaceMap.values()) {
+            quadSurfaceRenderData.unsubscribe();
+        }
+        for (const groupSurfaceRenderData of this.groupSurfaceMap.values()) {
+            groupSurfaceRenderData.unsubscribe();
+        }
+        
+        this.quadSurfaceMap.clear();
+        this.groupSurfaceMap.clear();
     }
 }

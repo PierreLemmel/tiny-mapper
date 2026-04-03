@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import type { MainScene } from "./main-scene";
 import type { Position } from "../logic/mapping";
 import { get } from "svelte/store";
 import { mainRendering } from "../stores/rendering";
@@ -7,6 +6,10 @@ import { mainRendering } from "../stores/rendering";
 let cameraCount = 0;
 
 export const CAMERA_Z_POSITION = 100_000;
+
+export const ZOOM_FACTOR = 1.1;
+export const MIN_ZOOM = 0.01;
+export const MAX_ZOOM = 100;
 
 export class MainCamera {
     private _camera: THREE.OrthographicCamera;
@@ -19,38 +22,45 @@ export class MainCamera {
         return cameraCount;
     }
 
-    private _position: Position;
-    private _zoom: number;
+    private _width: number = 1;
+    private _height: number = 1;
+    private _unsubscribe: () => void;
 
     public constructor(width: number, height: number) {
+        this._width = width;
+        this._height = height;
 
-        const { position, zoom } = get(mainRendering);
+        this._camera = new THREE.OrthographicCamera(0, 1, 1, 0, 0.1, CAMERA_Z_POSITION);
+        this._camera.position.set(0, 0, CAMERA_Z_POSITION);
 
-        this._position = position;
-        this._zoom = zoom;
-
-        const [x, y] = position;
-
-        this._camera = new THREE.OrthographicCamera(x - width / 2, x + width / 2, y + height / 2, y - height / 2, 0.1, CAMERA_Z_POSITION);
-        this._camera.position.set(x, y, CAMERA_Z_POSITION);
+        this._unsubscribe = mainRendering.subscribe(({ position, zoom }) => {
+            this.applyState(position, zoom);
+        });
 
         cameraCount++;
     }
 
-    private updateCamera(width: number, height: number) {
-        this._camera.left = this._position[0] - width / 2;
-        this._camera.right = this._position[0] + width / 2;
-        this._camera.top = this._position[1] + height / 2;
-        this._camera.bottom = this._position[1] - height / 2;
+    private applyState(position: Position, zoom: number) {
+        const halfW = this._width / (2 * zoom);
+        const halfH = this._height / (2 * zoom);
+
+        this._camera.left = position[0] - halfW;
+        this._camera.right = position[0] + halfW;
+        this._camera.top = position[1] + halfH;
+        this._camera.bottom = position[1] - halfH;
 
         this._camera.updateProjectionMatrix();
     }
 
     public resize(width: number, height: number) {
-        this.updateCamera(width, height);
+        this._width = width;
+        this._height = height;
+        const { position, zoom } = get(mainRendering);
+        this.applyState(position, zoom);
     }
 
     public dispose() {
+        this._unsubscribe();
         cameraCount--;
     }
 }
