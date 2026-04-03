@@ -1,7 +1,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 
 const DB_NAME = "tiny-mapper";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -10,6 +10,7 @@ export const DbStores = {
     surfaces: "Surfaces",
     mapping: "Mapping",
     materials: "Materials",
+    settings: "Settings",
 } as const;
 
 export type DbStore = (typeof DbStores)[keyof typeof DbStores];

@@ -7,8 +7,6 @@
     import {
         applyFinalize,
         clearMultiDrag,
-        clearSelection,
-        deleteSelectedSurfaces,
         renameRequestId,
         startMultiDragIfNeeded,
         type SurfaceDisplayTreeItem,
@@ -16,6 +14,7 @@
     import SurfaceTreeDisplayItem from "./SurfaceTreeDisplayItem.svelte";
     import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../../lib/ui/animations';
     import { rootSurfaces } from '../../../lib/stores/surfaces';
+    import { clearSelection, deleteSelectedSurfaces } from '../../../lib/logic/surfaces/surface-selection';
 
     export let className: string | undefined = undefined;
 

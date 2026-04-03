@@ -8,6 +8,7 @@
     import OutputsWindow from "./components/Windows/OutputsWindow.svelte";
     import SettingsWindow from "./components/Windows/SettingsWindow.svelte";
     import { initRenderingStore } from "./lib/stores/rendering";
+    import { initSettingsStores } from "./lib/stores/settings";
     import { registerAllEventHandlers } from "./lib/events/register-handlers";
     import { eventStore } from "./lib/events/event-store";
     import { application } from "./lib/stores/application";
@@ -19,6 +20,7 @@
             initMaterialsStores(),
             initUIStores(),
             initRenderingStore(),
+            initSettingsStores(),
         ]);
         registerAllEventHandlers();
 

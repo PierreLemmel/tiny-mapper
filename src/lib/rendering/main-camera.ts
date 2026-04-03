@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { Position } from "../logic/mapping";
 import { get } from "svelte/store";
 import { mainRendering } from "../stores/rendering";
+import { RenderingLayers } from "./rendering-layers";
 
 let cameraCount = 0;
 
@@ -32,6 +33,9 @@ export class MainCamera {
 
         this._camera = new THREE.OrthographicCamera(0, 1, 1, 0, 0.1, CAMERA_Z_POSITION);
         this._camera.position.set(0, 0, CAMERA_Z_POSITION);
+
+        this._camera.layers.enable(RenderingLayers.SURFACES);
+        this._camera.layers.enable(RenderingLayers.SELECTION_BOX);
 
         this._unsubscribe = mainRendering.subscribe(({ position, zoom }) => {
             this.applyState(position, zoom);

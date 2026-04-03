@@ -37,3 +37,7 @@ export function radiansToDegrees(radians: number): number {
 export function isWithinArray(array: any[], index: number): boolean {
     return index >= 0 && index < array.length;
 }
+
+export function remap(value: number, min: number, max: number, newMin: number, newMax: number): number {
+    return newMin + (value - min) * (newMax - newMin) / (max - min);
+}

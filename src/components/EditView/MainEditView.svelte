@@ -4,9 +4,13 @@
     import { MainCamera, ZOOM_FACTOR, MIN_ZOOM, MAX_ZOOM } from "../../lib/rendering/main-camera";
     import { MainRenderer } from "../../lib/rendering/main-renderer";
     import { renderingUI } from "../../lib/stores/user-interface";
-    import { cn } from "../../lib/core/utils";
+    import { cn, remap } from "../../lib/core/utils";
     import { mainRendering } from "../../lib/stores/rendering";
     import { application } from "../../lib/stores/application";
+    import { dragOrClick, type DistinctEvent } from "../../lib/ui/actions/dragOrClick";
+    import { MainRaycaster } from "../../lib/rendering/main-raycaster";
+    import type { SurfaceType } from "../../lib/logic/surfaces/surfaces";
+    import { clearSelection, selectSurface, type SelectSurfaceModifiers } from "../../lib/logic/surfaces/surface-selection";
 
     let container: HTMLDivElement;
     let canvas: HTMLCanvasElement;
@@ -18,6 +22,7 @@
     const scene: MainScene = MainScene.instance();
     let camera: MainCamera|null = null;
     let renderer: MainRenderer|null = null;
+    let raycaster: MainRaycaster|null = null;
 
     let canvasWidth = 1;
     let canvasHeight = 1;
@@ -36,39 +41,57 @@
     let textureCount: number;
 
     let isDragging = false;
-    let lastMouseX = 0;
-    let lastMouseY = 0;
 
-    function handleMouseDown(e: MouseEvent) {
-        if (e.button === 0 || e.button === 1) {
-            e.preventDefault();
-            isDragging = true;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            window.addEventListener("mousemove", handleWindowMouseMove);
-            window.addEventListener("mouseup", handleWindowMouseUp);
+
+    function handleClick(e: DistinctEvent) {
+
+        if (!camera || !raycaster) return;
+
+        const {
+            ctrlKey,
+            shiftKey,
+            metaKey,
+            x,
+            y,
+        } = e;
+
+        const ndcX = remap(x, 0, canvasWidth, -1, 1);
+        const ndcY = remap(y, 0, canvasHeight, 1, -1);
+
+        const intersects = raycaster.castRay(ndcX, ndcY);
+        const modifiers: SelectSurfaceModifiers = { ctrlKey, shiftKey, metaKey };
+        
+        switch (intersects.type) {
+            case "Nothing":
+                handleNothingClick(modifiers);
+                break;
+            case "Surface":
+                handleSurfaceClick(intersects.surfaceId, intersects.surfaceType, modifiers);
+                break;
         }
     }
 
-    function handleWindowMouseMove(e: MouseEvent) {
-        if (!isDragging) return;
-        const dx = e.clientX - lastMouseX;
-        const dy = e.clientY - lastMouseY;
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        mainRendering.update(r => ({
-            ...r,
-            position: [
-                r.position[0] - dx / r.zoom,
-                r.position[1] + dy / r.zoom,
-            ],
-        }));
+
+    function handleNothingClick(modifiers: SelectSurfaceModifiers) {
+        if (modifiers.ctrlKey || modifiers.metaKey) {
+            return;
+        }
+        clearSelection();
     }
 
-    function handleWindowMouseUp() {
+    function handleSurfaceClick(surfaceId: string, surfaceType: SurfaceType, modifiers: SelectSurfaceModifiers) {
+        selectSurface(surfaceId, modifiers, { allowShiftAnchoring: false });
+    }
+
+    function handleDragStart(e: DistinctEvent) {
+        isDragging = true;
+    }
+
+    function handleDragMove(e: DistinctEvent) {
+    }
+
+    function handleDragEnd(e: DistinctEvent) {
         isDragging = false;
-        window.removeEventListener("mousemove", handleWindowMouseMove);
-        window.removeEventListener("mouseup", handleWindowMouseUp);
     }
 
     onMount(() => {
@@ -86,6 +109,7 @@
 
         camera = new MainCamera(width, height);
         renderer = new MainRenderer(canvas);
+        raycaster = new MainRaycaster(camera, scene);
         resize(width, height);
 
         function onWheel(e: WheelEvent) {
@@ -141,8 +165,6 @@
     onDestroy(() => {
         cancelAnimationFrame(rafId);
         resizeObserver?.disconnect();
-        window.removeEventListener("mousemove", handleWindowMouseMove);
-        window.removeEventListener("mouseup", handleWindowMouseUp);
 
         camera?.dispose();
         renderer?.dispose();
@@ -154,8 +176,12 @@
         bind:this={canvas}
         class="absolute inset-0 w-full h-full"
         class:cursor-grabbing={isDragging}
-        class:cursor-grab={!isDragging}
-        on:mousedown={handleMouseDown}
+        use:dragOrClick
+        on:distinctClick={(e) => handleClick(e.detail)}
+        on:distinctDragStart={(e) => handleDragStart(e.detail)}
+        on:distinctDragMove={(e) => handleDragMove(e.detail)}
+        on:distinctDragEnd={(e) => handleDragEnd(e.detail)}
+        on:dblclick|preventDefault
     ></canvas>
     {#if $renderingUI.statsDisplay}
         <div class={cn(

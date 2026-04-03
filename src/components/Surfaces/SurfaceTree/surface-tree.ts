@@ -11,6 +11,7 @@ import { rootSurfaces, surfaceStore } from "../../../lib/stores/surfaces";
 import { deleteSurfaceAndChildren } from "../../../lib/logic/surfaces/surfaces";
 import { tick } from "svelte";
 import type { SurfaceDeleted } from "../../../lib/events/surfaces/surfaces-event-types";
+import { getTopLevelSelectedSurfaces } from "../../../lib/logic/surfaces/surface-selection";
 
 
 export type SurfaceDisplayTreeItem = {
@@ -21,92 +22,7 @@ export type SurfaceDisplayTreeItem = {
 export const activeDragCompanions = writable<Set<string>>(new Set());
 export const renameRequestId = writable<string | null>(null);
 
-let selectionAnchor: string | null = null;
 
-
-
-function getFlatVisualOrder(): string[] {
-
-    const collapsed = new Set(get(surfaceUI).collapsedGroups);
-    const result: string[] = [];
-
-    function walk(id: string) {
-        result.push(id);
-        const store = surfaceStore(id);
-        const surface = get(store);
-        if (surface && surface.type === "Group" && !collapsed.has(id)) {
-            for (const childId of surface.children) {
-                walk(childId);
-            }
-        }
-    }
-
-    const root = get(rootSurfaces);
-    for (const id of root.children) {
-        walk(id);
-    }
-
-    return result;
-}
-
-type SelectSurfaceModifiers = {
-    ctrlKey: boolean;
-    metaKey: boolean;
-    shiftKey: boolean;
-}
-
-export function selectSurface(id: string, modifiers: SelectSurfaceModifiers) {
-    const isCtrl = modifiers.ctrlKey || modifiers.metaKey;
-
-    if (modifiers.shiftKey && selectionAnchor) {
-        const flatOrder = getFlatVisualOrder();
-        const anchorIdx = flatOrder.indexOf(selectionAnchor);
-        const clickedIdx = flatOrder.indexOf(id);
-
-        if (anchorIdx >= 0 && clickedIdx >= 0) {
-            const start = Math.min(anchorIdx, clickedIdx);
-            const end = Math.max(anchorIdx, clickedIdx);
-            const rangeIds = flatOrder.slice(start, end + 1);
-
-            surfaceUI.update(ui => ({
-                ...ui,
-                selectedSurfaces: rangeIds,
-            }));
-        }
-        return;
-    }
-
-    if (isCtrl) {
-        surfaceUI.update(ui => ({
-            ...ui,
-            selectedSurfaces: ui.selectedSurfaces.includes(id)
-                ? ui.selectedSurfaces.filter(s => s !== id)
-                : [...ui.selectedSurfaces, id],
-        }));
-        selectionAnchor = id;
-        return;
-    }
-
-    const current = get(surfaceUI).selectedSurfaces;
-    if (current.length === 1 && current[0] === id) {
-        clearSelection();
-        return;
-    }
-
-    surfaceUI.update(ui => ({
-        ...ui,
-        selectedSurfaces: [id],
-    }));
-    selectionAnchor = id;
-}
-
-export function clearSelection() {
-    surfaceUI.update(ui => ({
-        ...ui,
-        selectedSurfaces: [],
-    }));
-    selectionAnchor = null;
-}
 
 export function toggleGroupCollapsed(id: string) {
     surfaceUI.update(ui => {
@@ -117,51 +33,12 @@ export function toggleGroupCollapsed(id: string) {
     });
 }
 
-function getTopLevelSelected(selected: string[]): string[] {
-    const selectedSet = new Set(selected);
-    return selected.filter(id => {
 
-        let parentId = get(surfaceStore(id)).parentId;
-        while (parentId && parentId !== "root") {
-            if (selectedSet.has(parentId)) return false;
-            parentId = get(surfaceStore(parentId)).parentId;
-        }
-        return true;
-    });
-}
-
-export function deleteSelectedSurfaces() {
-    const selected = get(surfaceUI).selectedSurfaces;
-    if (selected.length === 0) return;
-
-    const topLevel = getTopLevelSelected(selected);
-
-    const deletedSurfaces = topLevel.flatMap(id => deleteSurfaceAndChildren(id));
-
-    eventStore.push<SurfaceDeleted>({
-        category: "Surface",
-        type: "Deleted",
-        forwardData: { surfaceIds: [...topLevel] },
-        backwardData: {
-            deletedSurfaces,
-        },
-    });
-
-
-    const deletedSet = new Set(deletedSurfaces.map(s => s.surface.id));
-    surfaceUI.update(ui => ({
-        ...ui,
-        selectedSurfaces: [],
-        collapsedGroups: ui.collapsedGroups.filter(id => !deletedSet.has(id)),
-    }));
-
-    selectionAnchor = null;
-}
 
 export function startMultiDragIfNeeded(draggedId: string) {
     const selected = get(surfaceUI).selectedSurfaces;
     if (selected.includes(draggedId) && selected.length > 1) {
-        const topLevel = getTopLevelSelected(selected);
+        const topLevel = getTopLevelSelectedSurfaces(selected);
         if (!topLevel.includes(draggedId)) return;
         activeDragCompanions.set(new Set(selected.filter(id => id !== draggedId)));
     }
@@ -180,7 +57,7 @@ export function applyFinalize(
     triggerTreeMovedEventDebounced();
 
     const selected = get(surfaceUI).selectedSurfaces;
-    const topLevel = getTopLevelSelected(selected);
+    const topLevel = getTopLevelSelectedSurfaces(selected);
 
     const isMultiDrag = selected.includes(draggedId) && selected.length > 1
         && topLevel.includes(draggedId);

@@ -16,13 +16,13 @@
         clearMultiDrag,
         renameRequestId,
         startMultiDragIfNeeded,
-        selectSurface,
         toggleGroupCollapsed,
         type SurfaceDisplayTreeItem,
     } from "./surface-tree";
     import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../../lib/ui/animations';
     import ChevronIcon from '../../../icons/ChevronIcon.svelte';
     import { surfaceStore } from '../../../lib/stores/surfaces';
+    import { selectSurface } from '../../../lib/logic/surfaces/surface-selection';
 
     export let item: SurfaceDisplayTreeItem;
     export let indent: number = 0;
