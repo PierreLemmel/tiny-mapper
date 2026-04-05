@@ -12,7 +12,7 @@
     }
 </script>
 
-<div class={cn("flex flex-col h-full", className)}>
+<div class={cn("panel flex flex-col h-full", className)}>
     <div class="flex shrink-0 bg-neutral-900">
         {#each tabs as tab, i}
             <button

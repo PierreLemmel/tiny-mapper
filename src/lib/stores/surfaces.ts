@@ -1,9 +1,10 @@
 import { get, readonly, writable, type Writable } from "svelte/store";
-import { createRootSurface, type RootSurface, type Surface } from "../logic/surfaces/surfaces";
+import { createRootSurface, type RootSurface, type Surface, type SurfaceGeometry } from "../logic/surfaces/surfaces";
 import { load, saveOnChange } from "../core/storage";
 import { DbStores, getDb } from "../core/db";
 
 const surfaceStores: Map<string, Writable<Surface>> = new Map();
+const geometryStores: Map<string, Writable<SurfaceGeometry>> = new Map();
 export const rootSurfaces = writable<RootSurface>(createRootSurface());
 
 export function addSurfaceToStores(id: string, surface: Surface) {
@@ -33,6 +34,10 @@ export async function deleteSurfaceStore(id: string) {
 
 export function surfaceStore(id: string): Writable<Surface> {
     return surfaceStores.get(id)!;
+}
+
+export function surfaceGeometryStore(id: string): Writable<SurfaceGeometry> {
+    return geometryStores.get(id)!;
 }
 
 export async function initSurfacesStores() {

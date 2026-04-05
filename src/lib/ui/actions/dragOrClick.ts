@@ -1,4 +1,4 @@
-import type { Action, ActionReturn } from "svelte/action";
+import type { ActionReturn } from "svelte/action";
 
 export interface DistinctEvent {
     x: number;

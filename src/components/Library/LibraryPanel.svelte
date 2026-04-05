@@ -1,14 +1,12 @@
 <script lang="ts">
     import { cn } from "../../lib/core/utils";
     import SegmentedControl from "../Shared/SegmentedControl.svelte";
-    import VideoSettings from "../Settings/VideoSettings.svelte";
-    import InputsSettings from "../Settings/InputsSettings.svelte";
-    import OutputsSettings from "../Settings/OutputsSettings.svelte";
-    import UISettings from "../Settings/UISettings.svelte";
+    import DmxFixturesPanel from "./DmxFixtures/DmxFixturesPanel.svelte";
+    import ShadersPanel from "./Shaders/ShadersPanel.svelte";
 
     export let className: string | undefined = undefined;
 
-    const TABS = ["Video", "Inputs", "Outputs", "UI"];
+    const TABS = ["DMX Fixtures", "Shaders"];
     let activeTab = 0;
 </script>
 
@@ -19,13 +17,9 @@
 
     <div class="flex-1 overflow-auto">
         {#if activeTab === 0}
-            <VideoSettings />
+            <DmxFixturesPanel />
         {:else if activeTab === 1}
-            <InputsSettings />
-        {:else if activeTab === 2}
-            <OutputsSettings />
-        {:else if activeTab === 3}
-            <UISettings />
+            <ShadersPanel />
         {/if}
     </div>
 </div>

@@ -35,7 +35,7 @@
 </script>
 
 <div class={cn(
-    "w-full h-full",
+    "panel w-full h-full",
     "flex flex-col items-stretch justify-center",
     "gap-2 pt-1.5",
     className

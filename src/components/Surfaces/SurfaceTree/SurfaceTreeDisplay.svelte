@@ -1,20 +1,21 @@
 <script lang="ts">
     import { dndzone, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
-
+    import { onMount } from "svelte";
     import { cn } from "../../../lib/core/utils";
-    import { surfaceUI } from "../../../lib/stores/user-interface";
     import {
         applyFinalize,
         clearMultiDrag,
-        renameRequestId,
         startMultiDragIfNeeded,
         type SurfaceDisplayTreeItem,
     } from "./surface-tree";
     import SurfaceTreeDisplayItem from "./SurfaceTreeDisplayItem.svelte";
     import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../../lib/ui/animations';
     import { rootSurfaces } from '../../../lib/stores/surfaces';
-    import { clearSelection, deleteSelectedSurfaces } from '../../../lib/logic/surfaces/surface-selection';
+    import { clearSelection } from '../../../lib/logic/surfaces/surface-selection';
+    import { InputContexts } from "../../../lib/ui/inputs/input-contexts";
+    import { inputContext } from "../../../lib/ui/actions/inputContext";
+    import { registerSurfaceTreeHandlers, unregisterSurfaceTreeHandlers } from '../../../lib/ui/inputs/surfaces/surface-tree-handlers';
 
     export let className: string | undefined = undefined;
 
@@ -57,31 +58,18 @@
         }
     }
 
-    function handleKeyDown(e: KeyboardEvent) {
-        const target = e.target as HTMLElement;
-        const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+    onMount(() => {
+        registerSurfaceTreeHandlers();
 
-        if (e.key === "Escape") {
-            clearSelection();
-        } else if (e.key === "F2") {
-            const sel = $surfaceUI.selectedSurfaces;
-            if (sel.length === 1) {
-                e.preventDefault();
-                $renameRequestId = sel[0];
-            }
-        } else if ((e.key === "Delete" || e.key === "Backspace") && !isEditing) {
-
-            e.preventDefault();
-            deleteSelectedSurfaces();
-        }
-    }
+        return () => {
+            unregisterSurfaceTreeHandlers();
+        };
+    });
 </script>
-
-<svelte:window on:keydown={handleKeyDown} />
 
 <div
     class={cn(
-        "flex flex-col items-stretch justify-start overflow-y-auto max-h-full px-2",
+        "panel flex flex-col items-stretch justify-start overflow-y-auto max-h-full px-2",
         className
     )}
     use:dndzone={{
@@ -91,10 +79,11 @@
         dropTargetClasses: SURFACES_DND_TARGET_CLASSES,
         dropTargetStyle: SURFACES_DND_TARGET_STYLE
     }}
+    use:inputContext={InputContexts.SurfaceTree}
     on:consider={handleDndConsider}
     on:finalize={handleDndFinalize}
     on:click={handleBackgroundClick}
-    on:keydown={handleKeyDown}
+    on:keydown
 
     role="tree"
     tabindex="-1"

@@ -1,4 +1,4 @@
-import { get, writable } from "svelte/store";
+import { derived, get, writable } from "svelte/store";
 import { TRIGGERS } from "svelte-dnd-action";
 
 import { eventStore } from "../../../lib/events/event-store";
@@ -8,10 +8,9 @@ import {
 } from "../../../lib/logic/surfaces/surface-tree-snapshot";
 import { surfaceUI } from "../../../lib/stores/user-interface";
 import { rootSurfaces, surfaceStore } from "../../../lib/stores/surfaces";
-import { deleteSurfaceAndChildren } from "../../../lib/logic/surfaces/surfaces";
 import { tick } from "svelte";
-import type { SurfaceDeleted } from "../../../lib/events/surfaces/surfaces-event-types";
-import { getTopLevelSelectedSurfaces } from "../../../lib/logic/surfaces/surface-selection";
+import { topLevelSelectedSurfaces } from "../../../lib/logic/surfaces/surface-selection";
+
 
 
 export type SurfaceDisplayTreeItem = {
@@ -38,7 +37,7 @@ export function toggleGroupCollapsed(id: string) {
 export function startMultiDragIfNeeded(draggedId: string) {
     const selected = get(surfaceUI).selectedSurfaces;
     if (selected.includes(draggedId) && selected.length > 1) {
-        const topLevel = getTopLevelSelectedSurfaces(selected);
+        const topLevel = get(topLevelSelectedSurfaces);
         if (!topLevel.includes(draggedId)) return;
         activeDragCompanions.set(new Set(selected.filter(id => id !== draggedId)));
     }
@@ -57,7 +56,7 @@ export function applyFinalize(
     triggerTreeMovedEventDebounced();
 
     const selected = get(surfaceUI).selectedSurfaces;
-    const topLevel = getTopLevelSelectedSurfaces(selected);
+    const topLevel = get(topLevelSelectedSurfaces);
 
     const isMultiDrag = selected.includes(draggedId) && selected.length > 1
         && topLevel.includes(draggedId);

@@ -6,7 +6,7 @@ import surfaceFrag from "../../shaders/surface.frag?raw";
 import { get, type Writable } from "svelte/store";
 import { surfaceStore, rootSurfaces } from "../stores/surfaces";
 import { multiplyColors, type RawColor } from "../core/color";
-import { flipSurface, indicesToUint32Array, positionsToFloat32Array, uvsToFloat32Array, type SurfaceFlip } from "../logic/mapping";
+import { blendModeToThreeBlendMode, flipSurface, indicesToUint32Array, positionsToFloat32Array, requiresPremultipliedAlpha, uvsToFloat32Array, type SurfaceFlip } from "../logic/mapping";
 import { degreesToRadians } from "../core/utils";
 import { CAMERA_Z_POSITION } from "./main-camera";
 import { eventStore, type AppEvent } from "../events/event-store";
@@ -142,6 +142,7 @@ export class MainScene {
             resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
             depthWrite: false,
             depthTest: false,
+            transparent: true,
         });
 
         const selectionOutline = new Line2(
@@ -211,6 +212,7 @@ export class MainScene {
             opacity,
             flip,
             feathering,
+            blendMode,
         } = surface;
 
         const newHierarchyData: HierarchyData = {
@@ -253,6 +255,7 @@ export class MainScene {
                 uvs,
                 indices
             },
+            blendMode,
         } = surface;
 
         const material = new THREE.ShaderMaterial({
@@ -263,6 +266,8 @@ export class MainScene {
                 uOpacity: { value: 1 },
                 uFeathering: { value: 0 }
             },
+            blending: blendModeToThreeBlendMode(blendMode),
+            premultipliedAlpha: requiresPremultipliedAlpha(blendMode),
             transparent: true
         });
 
@@ -308,6 +313,7 @@ export class MainScene {
             opacity: surfaceOpacity,
             flip: surfaceFlip,
             feathering,
+            blendMode,
             parentId
         } = surface;
 
@@ -335,6 +341,8 @@ export class MainScene {
 
         mesh.name = surface.name;
 
+        material.blending = blendModeToThreeBlendMode(blendMode);
+        material.premultipliedAlpha = requiresPremultipliedAlpha(blendMode);
         material.uniforms.uColor.value.set(new THREE.Color(color[0], color[1], color[2]));
         material.uniforms.uOpacity.value = opacity;
         material.uniforms.uFeathering.value = Math.max(parentFeathering, feathering);
@@ -360,6 +368,7 @@ export class MainScene {
             },
             name,
             enabled,
+            blendMode,
         } = surface;
         group.visible = enabled;
         group.position.set(position[0], position[1], group.position.z);
@@ -367,6 +376,7 @@ export class MainScene {
         group.scale.set(scale[0], scale[1], 1);
 
         group.name = name;
+
 
         for (const childId of surface.children) {
             const surface = get(surfaceStore(childId));

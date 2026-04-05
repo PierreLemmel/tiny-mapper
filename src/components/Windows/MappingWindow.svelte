@@ -2,8 +2,7 @@
     import SplitPanels from "../Shared/SplitPanels.svelte";
     import { mappingUI } from "../../lib/stores/user-interface";
     import { cn } from "../../lib/core/utils";
-    import EditViewPanel from "../EditView/EditViewPanel.svelte";
-    import MaterialEditor from "../Materials/MaterialEditor.svelte";
+    import CenterPanel from "../EditView/CenterPanel.svelte";
     import SurfacesPanel from "../Surfaces/SurfacesPanel.svelte";
     import MaterialsPanel from "../Materials/MaterialsPanel.svelte";
 
@@ -26,11 +25,11 @@
             minSize={180} maxSize={500}
             className={cn("h-full", className)}
         >
-            <EditViewPanel slot="first" />
+            <CenterPanel slot="first" className="w-full h-full" />
             <MaterialsPanel slot="second" />
         </SplitPanels>
         {:else}
-        <EditViewPanel />
+        <CenterPanel className="w-full h-full" />
         {/if}
     </div>
 </SplitPanels>
@@ -41,9 +40,9 @@
     minSize={180} maxSize={500}
     className={cn("h-full", className)}
 >
-    <EditViewPanel slot="first" />
+    <CenterPanel slot="first" className="w-full h-full" />
     <MaterialsPanel slot="second" />
 </SplitPanels>
 {:else}
-<EditViewPanel />
+<CenterPanel className={cn("h-full", className)} />
 {/if}

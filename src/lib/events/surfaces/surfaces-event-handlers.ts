@@ -1,6 +1,6 @@
 import { eventStore } from "../event-store";
 import { addSurface, deleteSurfaceAndChildren, type Surface, type SurfaceTransform } from "../../logic/surfaces/surfaces";
-import type { ApplySurfacePropertyData, ApplySurfaceTransformPropertyData, SurfaceCreated, SurfaceDeleted, SurfacePropertyEvent, SurfaceTransformPropertyEvent, SurfaceTreeMoved } from "./surfaces-event-types";
+import type { ApplySurfacePropertyData, ApplySurfaceTransformPropertyData, SurfaceCreated, SurfaceDeleted, SurfacePropertyEvent, SurfacesTranslated, SurfacesTranslatedEventData, SurfaceTransformPropertyEvent, SurfaceTreeMoved } from "./surfaces-event-types";
 import { applySurfaceTreeSnapshot } from "../../logic/surfaces/surface-tree-snapshot";
 import { surfaceStore } from "../../stores/surfaces";
 import { surfaceUI } from "../../stores/user-interface";
@@ -27,6 +27,20 @@ function applySurfaceTransformProperty<K extends keyof SurfaceTransform>(data: A
 
         return { ...s, transform };
     });
+}
+
+function applySurfacesTranslated(stead: SurfacesTranslatedEventData) {
+    for (const { surfaceId, position } of stead.data) {
+        surfaceStore(surfaceId).update(s => {
+
+            const transform: SurfaceTransform = {
+                ...structuredClone(s.transform),
+                position
+            };
+
+            return { ...s, transform };
+        });
+    }
 }
 
 function registerSurfacePropertyHandler<K extends keyof Surface>(
@@ -147,5 +161,12 @@ export function registerSurfacesEventHandlers() {
         "TreeMoved",
         (data) => applySurfaceTreeSnapshot(data),
         (data) => applySurfaceTreeSnapshot(data)
+    );
+
+    eventStore.registerHandler<SurfacesTranslated>(
+        "Surface",
+        "Translated",
+        (data) => applySurfacesTranslated(data),
+        (data) => applySurfacesTranslated(data)
     );
 }

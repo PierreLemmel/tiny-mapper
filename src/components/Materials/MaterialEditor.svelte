@@ -12,7 +12,7 @@
 </script>
 
 <div class={cn(
-    "flex items-stretch p-2",
+    "panel flex items-stretch p-2",
     "overflow-y-auto h-full",
     className
 )}>

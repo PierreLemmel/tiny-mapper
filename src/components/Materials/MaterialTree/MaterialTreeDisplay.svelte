@@ -1,6 +1,8 @@
 <script lang="ts">
     import { dndzone, TRIGGERS, type DndEvent } from 'svelte-dnd-action';
     import { flip } from 'svelte/animate';
+    import { onDestroy, onMount } from "svelte";
+    import { get } from "svelte/store";
 
     import { cn } from "../../../lib/core/utils";
     import { materialUI } from "../../../lib/stores/user-interface";
@@ -16,6 +18,9 @@
     import MaterialTreeDisplayItem from "./MaterialTreeDisplayItem.svelte";
     import { FLIP_DURATION_MS, MATERIALS_DND_TARGET_CLASSES, MATERIALS_DND_TARGET_STYLE, MATERIALS_DND_TYPE } from '../../../lib/ui/animations';
     import { rootMaterials } from '../../../lib/stores/materials';
+    import { inputManager } from "../../../lib/ui/inputs/input-manager";
+    import { InputContexts } from "../../../lib/ui/inputs/input-contexts";
+    import { inputContext } from "../../../lib/ui/actions/inputContext";
 
     export let className: string | undefined = undefined;
 
@@ -57,30 +62,50 @@
         }
     }
 
-    function handleKeyDown(e: KeyboardEvent) {
-        const target = e.target as HTMLElement;
-        const isEditing = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+    let unregisterKeyboard: (() => void) | undefined;
 
-        if (e.key === "Escape") {
+    onMount(() => {
+        const unreg: (() => void)[] = [];
+
+        const a = inputManager.registerKeyboardHandler(InputContexts.MaterialTree, "Escape", (e) => {
             clearSelection();
-        } else if (e.key === "F2") {
-            const sel = $materialUI.selectedMaterials;
+        });
+        if (a) unreg.push(a);
+
+        const b = inputManager.registerKeyboardHandler(InputContexts.MaterialTree, "F2", (e) => {
+            const sel = get(materialUI).selectedMaterials;
             if (sel.length === 1) {
                 e.preventDefault();
-                $renameRequestId = sel[0];
+                renameRequestId.set(sel[0]);
             }
-        } else if ((e.key === "Delete" || e.key === "Backspace") && !isEditing) {
+        });
+        if (b) unreg.push(b);
+
+        const c = inputManager.registerKeyboardHandler(InputContexts.MaterialTree, "Delete", (e) => {
             e.preventDefault();
             deleteSelectedMaterials();
-        }
-    }
-</script>
+        });
+        if (c) unreg.push(c);
 
-<svelte:window on:keydown={handleKeyDown} />
+        const d = inputManager.registerKeyboardHandler(InputContexts.MaterialTree, "Backspace", (e) => {
+            e.preventDefault();
+            deleteSelectedMaterials();
+        });
+        if (d) unreg.push(d);
+
+        unregisterKeyboard = () => {
+            for (const u of unreg) u();
+        };
+    });
+
+    onDestroy(() => {
+        unregisterKeyboard?.();
+    });
+</script>
 
 <div
     class={cn(
-        "flex flex-col items-stretch justify-start overflow-y-auto max-h-full px-2",
+        "panel flex flex-col items-stretch justify-start overflow-y-auto max-h-full px-2",
         className
     )}
     use:dndzone={{
@@ -90,10 +115,11 @@
         dropTargetClasses: MATERIALS_DND_TARGET_CLASSES,
         dropTargetStyle: MATERIALS_DND_TARGET_STYLE
     }}
+    use:inputContext={InputContexts.MaterialTree}
     on:consider={handleDndConsider}
     on:finalize={handleDndFinalize}
     on:click={handleBackgroundClick}
-    on:keydown={handleKeyDown}
+    on:keydown
 
     role="tree"
     tabindex="-1"

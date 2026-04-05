@@ -3,6 +3,8 @@ import type { MainCamera } from "./main-camera";
 import type { MainScene } from "./main-scene";
 import { RenderingLayers } from "./rendering-layers";
 import type { SurfaceType } from "../logic/surfaces/surfaces";
+import { get } from "svelte/store";
+import { surfaceStore } from "../stores/surfaces";
 
 export type RaycastResult = {
     type: "Nothing";
@@ -36,11 +38,38 @@ export class MainRaycaster {
             return { type: "Nothing" };
         }
 
-        const intersect = intersects[0];
+        const {
+            object,
+            face
+        } = intersects[0];
+
+        const surfaceId = object.userData.id;
+        const surfaceType = object.userData.type as SurfaceType;
+        
+        if (face) {
+            const {
+                a,
+                b,
+                c,
+            } = face;
+
+            const surface = get(surfaceStore(surfaceId));
+            if (surface.type !== "Quad") {
+                console.warn(`Raycast hit a non-quad surface '${surfaceId}' (type: ${surface.type})`);
+                return { type: "Nothing" };
+            }
+
+            const meshGeometry = (object as THREE.Mesh).geometry;
+            console.log(meshGeometry);
+            const worldCoords = [a, b, c].map(idx => idx);
+            console.log(worldCoords);
+        }
+
+
         return {
             type: "Surface",
-            surfaceId: intersect.object.userData.id,
-            surfaceType: intersect.object.userData.type as SurfaceType
+            surfaceId,
+            surfaceType,
         };
     }
 }

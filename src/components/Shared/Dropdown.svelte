@@ -8,6 +8,7 @@
 
 <script lang="ts" generics="T extends string | number">
     import { onDestroy } from "svelte";
+    import { inputManager } from "../../lib/ui/inputs/input-manager";
     import { cn, createId } from "../../lib/core/utils";
     import ChevronIcon from "../../icons/ChevronIcon.svelte";
 

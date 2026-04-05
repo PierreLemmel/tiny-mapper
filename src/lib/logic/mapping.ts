@@ -1,7 +1,10 @@
-export const blendModeValues = ["Over", "Add", "Multiply"] as const;
+import * as THREE from "three";
+
+export const blendModeValues = ["Over", "Add", "Multiply", "Subtract"] as const;
 export type BlendMode = typeof blendModeValues[number];
 
 export type Position = [number, number]
+export type Delta = [number, number]
 export type Scale = [number, number]
 
 export type UV = [number, number]
@@ -34,4 +37,21 @@ export function indicesToUint32Array(indices: number[]): Uint32Array {
 
 export function uvsToFloat32Array(uvs: UV[]): Float32Array {
     return new Float32Array(uvs.flat());
+}
+
+export function blendModeToThreeBlendMode(blendMode: BlendMode): THREE.Blending {
+    switch (blendMode) {
+        case "Over":
+            return THREE.NormalBlending;
+        case "Add":
+            return THREE.AdditiveBlending;
+        case "Multiply":
+            return THREE.MultiplyBlending;
+        case "Subtract":
+            return THREE.SubtractiveBlending;
+    }
+}
+
+export function requiresPremultipliedAlpha(blendMode: BlendMode): boolean {
+    return blendMode === "Multiply" || blendMode === "Subtract";
 }

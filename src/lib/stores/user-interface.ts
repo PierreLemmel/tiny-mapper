@@ -22,6 +22,8 @@ export type MappingUIData = {
     rightPanelSize: number
 
     bottomPanelOpen: boolean
+    bottomPanelSize: number
+
     leftEditorSize: number
     rightEditorSize: number
 }
@@ -82,7 +84,8 @@ const DEFAULT_MAPPING_UI_DATA: MappingUIData = {
     leftPanelSize: 300,
     rightPanelOpen: true,
     rightPanelSize: 300,
-    bottomPanelOpen: true,
+    bottomPanelOpen: false,
+    bottomPanelSize: 250,
     leftEditorSize: 450,
     rightEditorSize: 450,
 }

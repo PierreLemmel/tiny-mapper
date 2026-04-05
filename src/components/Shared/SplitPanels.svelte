@@ -48,7 +48,7 @@
 <div
     bind:this={containerEl}
     class={cn(
-        "flex items-stretch h-full",
+        "panel flex items-stretch h-full",
         direction === 'horizontal' ? 'flex-row' : 'flex-col',
         className
     )}

@@ -11,7 +11,7 @@
 </script>
 
 <div class={cn(
-    "w-full",
+    "panel w-full",
     "shrink-0 grid grid-cols-3 items-center justify-center",
     "px-2 py-1 gap-1 border-b-4 border-neutral-800",
     className
@@ -28,10 +28,10 @@
         <Toggle bind:value={$mappingUI.leftPanelOpen} label="Left Panel" type="primary">
             <LayoutLeftIcon filled={$mappingUI.leftPanelOpen} />
         </Toggle>
-        <Toggle bind:value={$mappingUI.bottomPanelOpen} label="Bottom Panel" type="primary">
+        <Toggle bind:value={$mappingUI.bottomPanelOpen} label="Cues" type="primary">
             <LayoutBottomIcon filled={$mappingUI.bottomPanelOpen} />
         </Toggle>
-        <Toggle bind:value={$mappingUI.rightPanelOpen} label="Bottom Panel" type="primary">
+        <Toggle bind:value={$mappingUI.rightPanelOpen} label="Right Panel" type="primary">
             <LayoutRightIcon filled={$mappingUI.rightPanelOpen} />
         </Toggle>
     </div>

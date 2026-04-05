@@ -1,4 +1,4 @@
-import { get } from "svelte/store";
+import { derived, get } from "svelte/store";
 import { surfaceUI } from "../../stores/user-interface";
 import { rootSurfaces, surfaceStore } from "../../stores/surfaces";
 import { eventStore } from "../../events/event-store";
@@ -6,6 +6,21 @@ import type { SurfaceDeleted } from "../../events/surfaces/surfaces-event-types"
 import { deleteSurfaceAndChildren } from "./surfaces";
 
 let selectionAnchor: string | null = null;
+
+export const topLevelSelectedSurfaces = derived(surfaceUI, ui => getTopLevelSelectedSurfaces(ui.selectedSurfaces));
+
+function getTopLevelSelectedSurfaces(selected: string[]): string[] {
+    const selectedSet = new Set(selected);
+    return selected.filter(id => {
+
+        let parentId = get(surfaceStore(id)).parentId;
+        while (parentId && parentId !== "root") {
+            if (selectedSet.has(parentId)) return false;
+            parentId = get(surfaceStore(parentId)).parentId;
+        }
+        return true;
+    });
+}
 
 function getFlatVisualOrder(): string[] {
 
@@ -88,6 +103,15 @@ export function selectSurface(id: string, modifiers: SelectSurfaceModifiers, opt
     selectionAnchor = id;
 }
 
+export function selectAllSurfaces() {
+    surfaceUI.update(ui => ({
+        ...ui,
+        selectedSurfaces: getFlatVisualOrder(),
+    }));
+
+    selectionAnchor = null;
+}
+
 export function clearSelection() {
     surfaceUI.update(ui => ({
         ...ui,
@@ -96,24 +120,56 @@ export function clearSelection() {
     selectionAnchor = null;
 }
 
-export function getTopLevelSelectedSurfaces(selected: string[]): string[] {
-    const selectedSet = new Set(selected);
-    return selected.filter(id => {
-
-        let parentId = get(surfaceStore(id)).parentId;
-        while (parentId && parentId !== "root") {
-            if (selectedSet.has(parentId)) return false;
-            parentId = get(surfaceStore(parentId)).parentId;
-        }
-        return true;
-    });
+export function addNextSurfaceToSelection() {
+    console.log("addNextSurfaceToSelection");
 }
+
+export function addPreviousSurfaceToSelection() {
+    console.log("addPreviousSurfaceToSelection");
+}
+
+export function selectNextSurface(modifiers?: Partial<SelectSurfaceModifiers>) {
+    let idx = 0;
+    const flatOrder = getFlatVisualOrder();
+
+    if (selectionAnchor) {
+        const anchorIdx = flatOrder.indexOf(selectionAnchor);
+        idx = (anchorIdx + 1) % flatOrder.length;
+    }
+
+    const mod = {
+        ctrlKey: false, shiftKey: false, metaKey: false,
+        ...(modifiers || {})
+    };
+
+    selectSurface(flatOrder[idx], mod);
+}
+
+export function selectPreviousSurface(modifiers?: Partial<SelectSurfaceModifiers>) {
+    let idx = 0;
+    const flatOrder = getFlatVisualOrder();
+
+    if (selectionAnchor) {
+        const anchorIdx = flatOrder.indexOf(selectionAnchor);
+        idx = (anchorIdx - 1 + flatOrder.length) % flatOrder.length;
+    }
+
+    const mod = {
+        ctrlKey: false, shiftKey: false, metaKey: false,
+        ...(modifiers || {})
+    };
+
+    selectSurface(flatOrder[idx], mod);
+}
+
+
+
 
 export function deleteSelectedSurfaces() {
     const selected = get(surfaceUI).selectedSurfaces;
     if (selected.length === 0) return;
 
-    const topLevel = getTopLevelSelectedSurfaces(selected);
+    const topLevel = get(topLevelSelectedSurfaces);
 
     const deletedSurfaces = topLevel.flatMap(id => deleteSurfaceAndChildren(id));
 

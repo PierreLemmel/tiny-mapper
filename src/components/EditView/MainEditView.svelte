@@ -1,16 +1,27 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount } from "svelte";
     import { MainScene } from "../../lib/rendering/main-scene";
     import { MainCamera, ZOOM_FACTOR, MIN_ZOOM, MAX_ZOOM } from "../../lib/rendering/main-camera";
     import { MainRenderer } from "../../lib/rendering/main-renderer";
-    import { renderingUI } from "../../lib/stores/user-interface";
+    import { renderingUI, surfaceUI } from "../../lib/stores/user-interface";
     import { cn, remap } from "../../lib/core/utils";
     import { mainRendering } from "../../lib/stores/rendering";
     import { application } from "../../lib/stores/application";
     import { dragOrClick, type DistinctEvent } from "../../lib/ui/actions/dragOrClick";
     import { MainRaycaster } from "../../lib/rendering/main-raycaster";
     import type { SurfaceType } from "../../lib/logic/surfaces/surfaces";
-    import { clearSelection, selectSurface, type SelectSurfaceModifiers } from "../../lib/logic/surfaces/surface-selection";
+    import { clearSelection, selectSurface, topLevelSelectedSurfaces, type SelectSurfaceModifiers } from "../../lib/logic/surfaces/surface-selection";
+    import { InputContexts } from "../../lib/ui/inputs/input-contexts";
+    import { inputContext } from "../../lib/ui/actions/inputContext";
+    import { registerMainEditViewHandlers, unregisterMainEditViewHandlers } from "../../lib/ui/inputs/rendering/main-edit-view-handlers";
+    import { inputManager } from "../../lib/ui/inputs/input-manager";
+    import type { Position } from "../../lib/logic/mapping";
+    import { translateSelectedSurfaces } from "../../lib/logic/surfaces/surface-edit";
+    import { uiSettings } from "../../lib/stores/settings";
+    import { surfaceStore } from "../../lib/stores/surfaces";
+    import { get } from "svelte/store";
+    import type { SurfacesTranslatedEventData } from "../../lib/events/surfaces/surfaces-event-types";
+    import { eventStore } from "../../lib/events/event-store";
 
     let container: HTMLDivElement;
     let canvas: HTMLCanvasElement;
@@ -63,6 +74,7 @@
         
         switch (intersects.type) {
             case "Nothing":
+                if (!hasInterractedWithWindow) return;
                 handleNothingClick(modifiers);
                 break;
             case "Surface":
@@ -94,6 +106,168 @@
         isDragging = false;
     }
 
+    let isTranslatingLeft = false;
+    let isTranslatingRight = false;
+    let isTranslatingUp = false;
+    let isTranslatingDown = false;
+
+    let isTranslating = false;
+    let stopTranslationTimeout: number | null = null;
+
+    const TRANSLATION_TIMEOUT = 200;
+
+    $: {
+        if (!isTranslatingLeft && !isTranslatingRight && !isTranslatingUp && !isTranslatingDown) {
+            stopTranslationTimeout = setTimeout(() => {
+                isTranslating = false;
+                stopTranslationTimeout = null;
+            }, TRANSLATION_TIMEOUT);
+        }
+        else {
+            isTranslating = true;
+            if (stopTranslationTimeout) {
+                clearTimeout(stopTranslationTimeout);
+                stopTranslationTimeout = null;
+            }
+        }
+    }
+
+    let storedData: Map<string, { position: Position }> = new Map();
+    type TranslationType = "None"|"Surfaces";
+
+    let previousTranslationType: TranslationType = "None";
+    let translationType: TranslationType = "None";
+    $: {
+        if ($surfaceUI.selectedSurfaces.length > 0) {
+            translationType = "Surfaces";
+        }
+        else {
+            translationType = "None";
+        }
+    }
+
+    let translationInterrupted = false;
+
+    function stopTranslationOnSelectionChange(surfaces: string[]) {
+        if (!mounted) return;
+
+        if (isTranslating) {
+            doneTranslating(previousTranslationType);
+            translationInterrupted = true;
+        }
+
+        previousTranslationType = translationType;
+    }
+    $: stopTranslationOnSelectionChange($surfaceUI.selectedSurfaces);
+
+    function handleArrowLeftDown() {
+        handleTranslation("left");
+        isTranslatingLeft = true;
+    }
+    function handleArrowLeftUp() {
+        isTranslatingLeft = false;
+    }
+    function handleArrowRightDown() {
+        handleTranslation("right");
+        isTranslatingRight = true;
+    }
+    function handleArrowRightUp() {
+        isTranslatingRight = false;
+    }
+    function handleArrowUpDown() {
+        handleTranslation("up");
+        isTranslatingUp = true;
+    }
+    function handleArrowUpUp() {
+        isTranslatingUp = false;
+    }
+    function handleArrowDownDown() {
+        handleTranslation("down");
+        isTranslatingDown = true;
+    }
+    function handleArrowDownUp() {
+        isTranslatingDown = false;
+    }
+
+    function startTranslation(type: TranslationType) {
+        
+        switch (type) {
+            case "Surfaces":
+                {
+                    storedData.clear();
+                    for (const surface of $topLevelSelectedSurfaces) {
+                        storedData.set(surface, {
+                            position: [...get(surfaceStore(surface)).transform.position]
+                        });
+                    }
+                }
+                break;
+
+            case "None":
+                break;
+        }
+    }
+
+    function handleTranslation(direction: "left" | "right" | "up" | "down") {
+        if (translationInterrupted) return;
+
+        const speed = $uiSettings.arrowTranslationSpeed / $mainRendering.zoom;
+
+        const deltaX = direction === "left" ? -speed : direction === "right" ? speed : 0;
+        const deltaY = direction === "up" ? speed : direction === "down" ? -speed : 0;
+        translateSelectedSurfaces([deltaX, deltaY]);
+    }
+
+    function doneTranslating(type: TranslationType) {
+        
+        switch (type) {
+            case "Surfaces":
+                {
+                    const forwardData: SurfacesTranslatedEventData = {
+                        data: $topLevelSelectedSurfaces.map(surfaceId => ({
+                            surfaceId,
+                            position: [...get(surfaceStore(surfaceId)).transform.position],
+                        })),
+                    };
+                    const backwardData: SurfacesTranslatedEventData = {
+                        data: [...storedData.entries()].map(([surfaceId, { position }]) => ({
+                            surfaceId,
+                            position: [...position],
+                        })),
+                    }
+
+                    eventStore.push({
+                        category: "Surface",
+                        type: "Translated",
+                        forwardData,
+                        backwardData,
+                    });
+                }
+                break;
+
+            case "None":
+                break;
+        }
+    }
+
+    function startAndStopTranslationEffect(translate: boolean) {
+        if (!mounted) return;
+
+        if (translate) {
+            startTranslation(translationType);
+        }
+        else {
+            if (!translationInterrupted) {
+                doneTranslating(translationType);
+            }
+        }
+
+        translationInterrupted = false;
+    }
+    $: startAndStopTranslationEffect(isTranslating);
+
+    let mounted = false;
+    let hasInterractedWithWindow = false;
     onMount(() => {
         
         resizeObserver = new ResizeObserver((entries) => {
@@ -153,30 +327,46 @@
         }
         loop();
 
+        registerMainEditViewHandlers();
+
+        const unregisters = [
+            inputManager.registerKeyboardHandler("MainEditView", "ArrowUp", handleArrowUpDown, handleArrowUpUp),
+            inputManager.registerKeyboardHandler("MainEditView", "ArrowDown", handleArrowDownDown, handleArrowDownUp),
+            inputManager.registerKeyboardHandler("MainEditView", "ArrowLeft", handleArrowLeftDown, handleArrowLeftUp),
+            inputManager.registerKeyboardHandler("MainEditView", "ArrowRight", handleArrowRightDown, handleArrowRightUp),
+        ]
+
+        mounted = true;
+
         return () => {
             canvas.removeEventListener("wheel", onWheel);
+            unregisterMainEditViewHandlers();
+            
+            unregisters.forEach(unregister => unregister());
+
+            cancelAnimationFrame(rafId);
+            resizeObserver?.disconnect();
+
+            camera?.dispose();
+            renderer?.dispose();
         };
     });
 
     $: if ($application.loaded) {
         scene.initializeSceneIfNeeded();
     }
-    
-    onDestroy(() => {
-        cancelAnimationFrame(rafId);
-        resizeObserver?.disconnect();
 
-        camera?.dispose();
-        renderer?.dispose();
-    });
 </script>
 
-<div bind:this={container} class="flex flex-col w-full h-full min-w-0 min-h-0 relative">
+<div bind:this={container} class="panel flex flex-col w-full h-full min-w-0 min-h-0 relative">
     <canvas
         bind:this={canvas}
-        class="absolute inset-0 w-full h-full"
+        class="absolute inset-0 w-full h-full focus:outline-none focus-visible:outline-none"
         class:cursor-grabbing={isDragging}
+        use:inputContext={InputContexts.MainEditView}
         use:dragOrClick
+        on:click={() => hasInterractedWithWindow = true}
+        on:mouseleave={() => hasInterractedWithWindow = false}
         on:distinctClick={(e) => handleClick(e.detail)}
         on:distinctDragStart={(e) => handleDragStart(e.detail)}
         on:distinctDragMove={(e) => handleDragMove(e.detail)}
@@ -185,7 +375,7 @@
     ></canvas>
     {#if $renderingUI.statsDisplay}
         <div class={cn(
-            "w-65",
+            "panel w-65",
             "absolute top-0 right-0 z-10 bg-neutral-800/50",
             "grid grid-cols-[auto_auto] gap-2",
             "px-4 py-2 rounded-bl-sm",

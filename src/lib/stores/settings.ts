@@ -18,6 +18,9 @@ export interface OutputsSettings {}
 
 export interface UISettings {
     selectionColor: RawColor;
+
+    arrowTranslationSpeed: number;
+    handlesSize: number;
 }
 
 const DEFAULT_VIDEO_SETTINGS: VideoSettings = {};
@@ -25,6 +28,8 @@ const DEFAULT_INPUTS_SETTINGS: InputsSettings = {};
 const DEFAULT_OUTPUTS_SETTINGS: OutputsSettings = {};
 const DEFAULT_UI_SETTINGS: UISettings = {
     selectionColor: [0.486, 0.302, 1, 1],
+    arrowTranslationSpeed: 10,
+    handlesSize: 10,
 };
 
 export const videoSettings = writable<VideoSettings>(DEFAULT_VIDEO_SETTINGS);

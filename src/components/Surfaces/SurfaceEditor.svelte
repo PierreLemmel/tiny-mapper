@@ -1,5 +1,4 @@
 <script lang="ts">
-
     import { cn } from "../../lib/core/utils";
     import { surfaceStore } from "../../lib/stores/surfaces";
     import { surfaceUI } from "../../lib/stores/user-interface";
@@ -13,14 +12,14 @@
 </script>
 
 <div class={cn(
-    "flex items-stretch p-2",
+    "panel flex items-stretch p-2",
     "overflow-y-auto h-full",
     className
 )}>
     {#if $surfaceUI.selectedSurfaces.length === 0}
         <NoSurfaceEditor />
     {:else if $surfaceUI.selectedSurfaces.length === 1}
-        <SingleSurfaceEditor bind:surface={$surface} />
+        <SingleSurfaceEditor bind:surface={surface} />
     {:else if $surfaceUI.selectedSurfaces.length > 1}
         <MultipleSurfacesEditor />
     {/if}

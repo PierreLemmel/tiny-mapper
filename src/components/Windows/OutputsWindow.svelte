@@ -6,6 +6,7 @@
 
 
 <div class={cn(
+    "panel",
     className
 )}>
     OUTPUTS

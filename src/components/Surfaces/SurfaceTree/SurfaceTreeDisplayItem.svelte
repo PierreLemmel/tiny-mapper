@@ -23,6 +23,8 @@
     import ChevronIcon from '../../../icons/ChevronIcon.svelte';
     import { surfaceStore } from '../../../lib/stores/surfaces';
     import { selectSurface } from '../../../lib/logic/surfaces/surface-selection';
+    import { inputContext } from '../../../lib/ui/actions/inputContext';
+    import { InputContexts } from '../../../lib/ui/inputs/input-contexts';
 
     export let item: SurfaceDisplayTreeItem;
     export let indent: number = 0;
@@ -98,9 +100,10 @@
         selected && "bg-primary-400/10",
         isDragCompanion && "opacity-25",
     )}
+    use:inputContext={InputContexts.SurfaceTree}
     on:click|stopPropagation={handleClick}
     on:dblclick|stopPropagation={handleClick}
-    on:keydown|stopPropagation
+    on:keydown
     role="treeitem"
     aria-selected={selected}
     tabindex="-1"

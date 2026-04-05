@@ -93,7 +93,7 @@
     )}
     on:dblclick|stopPropagation={handleClick}
     on:click|stopPropagation={handleClick}
-    on:keydown|stopPropagation
+    on:keydown
     role="treeitem"
     aria-selected={selected}
     tabindex="-1"

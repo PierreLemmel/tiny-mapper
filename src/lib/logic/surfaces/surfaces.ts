@@ -28,7 +28,7 @@ export type SurfaceGeometry = {
 
 export type QuadGeometry = SurfaceGeometry
 
-type SurfaceBase = {
+export type SurfaceBase = {
     id: "root"|string;
     parentId: string | "root";
     enabled: boolean;

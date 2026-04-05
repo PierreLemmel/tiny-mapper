@@ -7,7 +7,7 @@
 </script>
 
 <div class={cn(
-    "flex flex-col w-full h-full min-w-0 min-h-0",
+    "panel flex flex-col w-full h-full min-w-0 min-h-0",
     className
 )}>
     <MainEditViewToolbar />

@@ -1,6 +1,7 @@
 import type { AppEvent } from "../event-store";
 import type { Surface, SurfaceTransform } from "../../logic/surfaces/surfaces";
 import type { SurfaceTreeSnapshot } from "../../logic/surfaces/surface-tree-snapshot";
+import type { Delta, Position } from "../../logic/mapping";
 
 
 export type ApplySurfacePropertyData<K extends keyof Surface> = {
@@ -51,3 +52,12 @@ export type SurfaceTreeMoved = AppEvent<"Surface", "TreeMoved",
     SurfaceTreeSnapshot,
     SurfaceTreeSnapshot
 >;
+
+export type SurfacesTranslatedEventData = {
+    data: {
+        surfaceId: string,
+        position: Position,
+    }[],
+}
+
+export type SurfacesTranslated = AppEvent<"Surface", "Translated", SurfacesTranslatedEventData, SurfacesTranslatedEventData>
