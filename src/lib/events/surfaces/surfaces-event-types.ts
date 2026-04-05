@@ -61,3 +61,16 @@ export type SurfacesTranslatedEventData = {
 }
 
 export type SurfacesTranslated = AppEvent<"Surface", "Translated", SurfacesTranslatedEventData, SurfacesTranslatedEventData>
+
+export type SurfaceGeometryVertexChangedEventData = {
+    surfaceId: string,
+    vertices: {
+        index: number,
+        value: Position,
+    }[],
+}
+
+export type SurfaceGeometryVertexChanged = AppEvent<"Surface", "GeometryVertexChanged",
+    SurfaceGeometryVertexChangedEventData,
+    SurfaceGeometryVertexChangedEventData
+>;

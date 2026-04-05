@@ -1,4 +1,5 @@
 import type { InputContext } from "./input-contexts";
+import { log } from "../../logging/logger";
 
 export type ModifierKey = "Ctrl" | "Shift" | "Alt";
 
@@ -72,7 +73,7 @@ export class InputManager {
         const ctxMap = this.keyboardHandlers.get(context)!;
         
         if (ctxMap.has(key)) {
-            console.error(`Handler for key ${key} already registered in context ${context}`);
+            log.error(`Handler for key ${key} already registered in context ${context}`);
             return () => {};
         }
 

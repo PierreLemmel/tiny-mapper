@@ -8,16 +8,24 @@ const geometryStores: Map<string, Writable<SurfaceGeometry>> = new Map();
 export const rootSurfaces = writable<RootSurface>(createRootSurface());
 
 export function addSurfaceToStores(id: string, surface: Surface) {
-    const store = writable<Surface>(surface);
-    surfaceStores.set(id, store);
+    const surfaceStore = writable<Surface>(surface);
+    surfaceStores.set(id, surfaceStore);
 
-    saveOnChange(store, DbStores.surfaces, id);
+    saveOnChange(surfaceStore, DbStores.surfaces, id);
     surfacesInternal.update(surfaces => ({ ...surfaces, [id]: surface }));
-    store.subscribe(s => {
+    surfaceStore.subscribe(s => {
         surfacesInternal.update(surfaces => ({ ...surfaces, [id]: s }));
     });
 
-    return store;
+    if (surface.type !== "Group") {
+        const geometryStore = writable(structuredClone(surface.geometry));
+        geometryStores.set(id, geometryStore);
+        geometryStore.subscribe(g => {
+            surfaceStore.update(s => ({ ...s, geometry: structuredClone(g) }));
+        });
+    }
+
+    return surfaceStore;
 }
 
 export async function deleteSurfaceStore(id: string) {

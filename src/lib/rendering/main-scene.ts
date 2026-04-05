@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import type { GroupSurface, QuadSurface } from "../logic/surfaces/surfaces";
+import type { GroupSurface, QuadSurface, SurfaceGeometry } from "../logic/surfaces/surfaces";
 
 import surfaceVert from "../../shaders/surface.vert?raw";
 import surfaceFrag from "../../shaders/surface.frag?raw";
 import { get, type Writable } from "svelte/store";
-import { surfaceStore, rootSurfaces } from "../stores/surfaces";
+import { surfaceStore, rootSurfaces, surfaceGeometryStore } from "../stores/surfaces";
 import { multiplyColors, type RawColor } from "../core/color";
 import { blendModeToThreeBlendMode, flipSurface, indicesToUint32Array, positionsToFloat32Array, requiresPremultipliedAlpha, uvsToFloat32Array, type SurfaceFlip } from "../logic/mapping";
 import { degreesToRadians } from "../core/utils";
@@ -12,10 +12,12 @@ import { CAMERA_Z_POSITION } from "./main-camera";
 import { eventStore, type AppEvent } from "../events/event-store";
 import { surfaceUI } from "../stores/user-interface";
 import { uiSettings } from "../stores/settings";
+import { log } from "../logging/logger";
 import { RenderingLayers } from "./rendering-layers";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { addOutlinerToObject, removeOutlinerFromObject } from "./outliner";
 
 type QuadSurfaceRenderData = {
     mesh: THREE.Mesh;
@@ -58,6 +60,9 @@ export class MainScene {
     private groupSurfaceMap = new Map<string, GroupSurfaceRenderData>();
     private root: THREE.Group = new THREE.Group();
     private selectionBox: THREE.Group = new THREE.Group();
+    private selectionBackgroundMaterial: THREE.MeshBasicMaterial = new THREE.MeshBasicMaterial();
+    private selectionOutlineMaterial: LineMaterial = new LineMaterial();
+    private outlinedObjects = new Set<string>();
 
     private unsubscribeSelectionUI: () => void = () => {};
     private unsubscribeSelectionColor: () => void = () => {};           
@@ -71,7 +76,7 @@ export class MainScene {
 
     public initializeSceneIfNeeded() {
         if (this.initialized) {
-            console.warn("Scene already initialized");
+            log.warn("Scene already initialized");
             return;
         }
 
@@ -80,7 +85,7 @@ export class MainScene {
         this.initialized = true;
 
         this.createRoot();
-        this.createSelectionBox();
+        this.createSelectionItems();
 
         const rootHierarchyData: HierarchyData = defaultHierarchyData();
         this.groupSurfaceMap.set("root", {
@@ -100,7 +105,7 @@ export class MainScene {
         eventStore.on("redo", e => this.handleEvent(e));
 
         this.unsubscribeSelectionUI = surfaceUI.subscribe(ui => {
-            this.updateSelectionBox();
+            this.updateSelectionItems();
         });
     }
 
@@ -110,19 +115,19 @@ export class MainScene {
         this.scene.add(this.root);
     }
 
-    private createSelectionBox() {
+    private createSelectionItems() {
         this.selectionBox.name = "selectionBox";
         this.selectionBox.userData.id = "selectionBox";
         this.scene.add(this.selectionBox);
 
         const selectionGeometry = new THREE.PlaneGeometry(1, 1);
-        const bgMaterial = new THREE.MeshBasicMaterial({
+        this.selectionBackgroundMaterial = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
-            opacity: 0.15,
+            opacity: get(uiSettings).selectionOverlayOpacity,
             depthTest: false,
         });
-        const selectionBackground = new THREE.Mesh(selectionGeometry, bgMaterial);
+        const selectionBackground = new THREE.Mesh(selectionGeometry, this.selectionBackgroundMaterial);
         selectionBackground.name = "Selection Background";
 
 
@@ -136,18 +141,18 @@ export class MainScene {
         ]);
 
 
-        const outlineMaterial = new LineMaterial({
+        this.selectionOutlineMaterial = new LineMaterial({
             color: 0xfffff,
             linewidth: SELECTION_BOX_WIDTH, 
             resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
             depthWrite: false,
             depthTest: false,
-            transparent: true,
+            transparent: true, 
         });
 
         const selectionOutline = new Line2(
             outlineGeometry,
-            outlineMaterial
+            this.selectionOutlineMaterial
         );
         selectionOutline.name = "Selection Outline";
 
@@ -163,8 +168,9 @@ export class MainScene {
         selectionOutline.renderOrder = 999;
 
         this.unsubscribeSelectionColor = uiSettings.subscribe(settings => {       
-            bgMaterial.color.set(settings.selectionColor[0], settings.selectionColor[1], settings.selectionColor[2]);
-            outlineMaterial.color.set(settings.selectionColor[0], settings.selectionColor[1], settings.selectionColor[2]);
+            this.selectionBackgroundMaterial.opacity = settings.selectionOverlayOpacity;
+            this.selectionBackgroundMaterial.color.set(settings.selectionColor[0], settings.selectionColor[1], settings.selectionColor[2]);
+            this.selectionOutlineMaterial.color.set(settings.selectionColor[0], settings.selectionColor[1], settings.selectionColor[2]);
         });
     }
 
@@ -174,17 +180,17 @@ export class MainScene {
                 case "TreeMoved":
                     this.checkHierarchy();
                     this.sortSurfaces();
-                    this.updateSelectionBox();
+                    this.updateSelectionItems();
                     break;
                 case "Deleted":
                     this.checkHierarchy();
                     this.sortSurfaces();
-                    this.updateSelectionBox();
+                    this.updateSelectionItems();
                     break;
                 case "Created":
                     this.checkHierarchy();
                     this.sortSurfaces();
-                    this.updateSelectionBox();
+                    this.updateSelectionItems();
                     break;
             }
         }
@@ -247,7 +253,7 @@ export class MainScene {
         }
     }
 
-    private createQuadSurface(surface: QuadSurface, store: Writable<QuadSurface>, parent: THREE.Group) {
+    private createQuadSurface(surface: QuadSurface, surfaceStore: Writable<QuadSurface>, parent: THREE.Group) {
 
         const {
             geometry: {
@@ -286,10 +292,23 @@ export class MainScene {
         const quadSurfaceRenderData: QuadSurfaceRenderData = { mesh, material, geometry, unsubscribe: () => {} };
         this.quadSurfaceMap.set(surface.id, quadSurfaceRenderData);
 
-        const unsubscribe = store.subscribe(s => {
+        const surfaceUnsub = surfaceStore.subscribe(s => {
             this.applyQuadProperties(s, quadSurfaceRenderData);
         });
-        quadSurfaceRenderData.unsubscribe = unsubscribe;
+
+        const geometryStore = surfaceGeometryStore(surface.id);
+        const geometryUnsub = geometryStore.subscribe(g => {
+            this.applyQuadGeometry(g, quadSurfaceRenderData);
+
+            if (get(surfaceUI).selectedSurfaces.includes(surface.id)) {
+                this.updateSelectionItems();
+            }
+        });
+
+        quadSurfaceRenderData.unsubscribe = () => {
+            surfaceUnsub();
+            geometryUnsub();
+        };
     }
 
     private applyQuadProperties(surface: QuadSurface, quadSurfaceRenderData: QuadSurfaceRenderData | undefined) {
@@ -319,7 +338,7 @@ export class MainScene {
 
         const parent = this.groupSurfaceMap.get(parentId);
         if (!parent) {
-            console.error(`Parent not found for surface '${surface.id}' (parentId: '${surface.parentId}')`);
+            log.error(`Parent not found for surface '${surface.id}' (parentId: '${surface.parentId}')`);
             return;
         }
 
@@ -347,9 +366,27 @@ export class MainScene {
         material.uniforms.uOpacity.value = opacity;
         material.uniforms.uFeathering.value = Math.max(parentFeathering, feathering);
 
-        this.updateSelectionBox();
+        this.updateSelectionItems();
     }
     
+    private applyQuadGeometry(geometry: SurfaceGeometry, quadSurfaceRenderData: QuadSurfaceRenderData | undefined) {
+        if (!quadSurfaceRenderData) {
+            return;
+        }
+        
+        const {
+            geometry: meshGeometry,
+        } = quadSurfaceRenderData;
+
+        const posAttribute = meshGeometry.getAttribute("position");
+        const buffer = posAttribute?.array as Float32Array;
+        
+        buffer.set(positionsToFloat32Array(geometry.vertices));
+        posAttribute.needsUpdate = true;
+
+        meshGeometry.computeBoundingBox();
+    }
+
     private applyGroupProperties(surface: GroupSurface, groupSurfaceRenderData: GroupSurfaceRenderData | undefined, hierarchyData: HierarchyData) {
         if (!groupSurfaceRenderData) {
             return;
@@ -368,7 +405,6 @@ export class MainScene {
             },
             name,
             enabled,
-            blendMode,
         } = surface;
         group.visible = enabled;
         group.position.set(position[0], position[1], group.position.z);
@@ -389,7 +425,7 @@ export class MainScene {
             }
         }
 
-        this.updateSelectionBox();
+        this.updateSelectionItems();
     }
 
     private checkHierarchy() {
@@ -520,7 +556,7 @@ export class MainScene {
 
             const object = surface.type === "Quad" ? qsMap.get(id)?.mesh : gsMap.get(id)?.group;
             if (!object) {
-                console.error(`Position not found for surface '${id}'`);
+                log.error(`Position not found for surface '${id}'`);
                 return;
             }
 
@@ -543,37 +579,83 @@ export class MainScene {
         }
     }
 
-    private updateSelectionBox() {
+    private updateSelectionItems() {
         const selectedIds = get(surfaceUI).selectedSurfaces;
 
-        if (selectedIds.length !== 0) {
-            this.selectionBox.visible = true;
+        this.selectionBox.visible = false;
 
-            let box = new THREE.Box3();
-            for (const id of selectedIds) {
-                const object = this.quadSurfaceMap.get(id)?.mesh ?? this.groupSurfaceMap.get(id)?.group;
-                if (!object) continue;
-                
-                const boundingBox = new THREE.Box3();
-                boundingBox.setFromObject(object);
-                box = box.union(boundingBox);
+        if (selectedIds.length > 1) {
+            this.clearOutlinedObjects();
+            this.updateSelectionBoxForManyItems(selectedIds);
+        }
+        else if (selectedIds.length === 1) {
+
+            const surface = get(surfaceStore(selectedIds[0]));
+            if (surface.type === "Group") {
+                this.clearOutlinedObjects();
+                this.updateSelectionBoxForManyItems(selectedIds);
             }
-
-            const center = new THREE.Vector3();
-            box.getCenter(center);
-
-            const { x, y } = center;
-
-            const size = new THREE.Vector3();
-            box.getSize(size);
-
-            const { x: width, y: height } = size;
-
-            this.selectionBox.position.set(x, y, SELECTION_Z_POSITION);
-            this.selectionBox.scale.set(width + SELECTION_BOX_WIDTH / 2 - 1, height + SELECTION_BOX_WIDTH / 2 - 1, 1);
+            else {
+                this.updateSelectionForSingleItem(selectedIds[0]);
+            }
         }
         else {
-            this.selectionBox.visible = false;
+            this.clearOutlinedObjects();
+        }
+    }
+
+    private updateSelectionBoxForManyItems(selectedIds: string[]) {
+        this.selectionBox.visible = true;
+
+        let box = new THREE.Box3();
+        for (const id of selectedIds) {
+            const object = this.quadSurfaceMap.get(id)?.mesh ?? this.groupSurfaceMap.get(id)?.group;
+            if (!object) continue;
+            
+            const boundingBox = new THREE.Box3();
+            boundingBox.setFromObject(object);
+            box = box.union(boundingBox);
+        }
+
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+
+        const { x, y } = center;
+
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        const { x: width, y: height } = size;
+
+        this.selectionBox.position.set(x, y, SELECTION_Z_POSITION);
+        this.selectionBox.scale.set(width + SELECTION_BOX_WIDTH / 2 - 1, height + SELECTION_BOX_WIDTH / 2 - 1, 1);
+    }
+
+    private clearOutlinedObjects() {
+        for (const id of this.outlinedObjects.values()) {
+            const object = this.quadSurfaceMap.get(id)?.mesh;
+            if (!object) {
+                continue;
+            }
+
+            removeOutlinerFromObject(object);
+        }
+
+        this.outlinedObjects.clear();
+    }
+
+    private updateSelectionForSingleItem(surfaceId: string) {
+        if (!this.outlinedObjects.has(surfaceId)) {
+
+            this.clearOutlinedObjects();
+            const object = this.quadSurfaceMap.get(surfaceId)?.mesh;
+
+            if (!object) {
+                return;
+            }
+
+            addOutlinerToObject(object, this.selectionBackgroundMaterial, this.selectionOutlineMaterial);
+            this.outlinedObjects.add(surfaceId);
         }
     }
 

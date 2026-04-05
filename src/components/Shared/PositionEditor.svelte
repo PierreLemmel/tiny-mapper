@@ -9,7 +9,8 @@
     export let precision: number = 2;
     export let onCommit: (oldValue: Position, newValue: Position) => void = () => {};
 
-    const sensitivity = 2;
+    export let sensitivity: number = 2;
+
     const scrubberClasses = "w-20 shrink-0"
 </script>
 

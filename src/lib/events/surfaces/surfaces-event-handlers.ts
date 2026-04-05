@@ -1,8 +1,8 @@
 import { eventStore } from "../event-store";
 import { addSurface, deleteSurfaceAndChildren, type Surface, type SurfaceTransform } from "../../logic/surfaces/surfaces";
-import type { ApplySurfacePropertyData, ApplySurfaceTransformPropertyData, SurfaceCreated, SurfaceDeleted, SurfacePropertyEvent, SurfacesTranslated, SurfacesTranslatedEventData, SurfaceTransformPropertyEvent, SurfaceTreeMoved } from "./surfaces-event-types";
+import type { ApplySurfacePropertyData, ApplySurfaceTransformPropertyData, SurfaceCreated, SurfaceDeleted, SurfaceGeometryVertexChanged, SurfaceGeometryVertexChangedEventData, SurfacePropertyEvent, SurfacesTranslated, SurfacesTranslatedEventData, SurfaceTransformPropertyEvent, SurfaceTreeMoved } from "./surfaces-event-types";
 import { applySurfaceTreeSnapshot } from "../../logic/surfaces/surface-tree-snapshot";
-import { surfaceStore } from "../../stores/surfaces";
+import { surfaceGeometryStore, surfaceStore } from "../../stores/surfaces";
 import { surfaceUI } from "../../stores/user-interface";
 
 
@@ -41,6 +41,26 @@ function applySurfacesTranslated(stead: SurfacesTranslatedEventData) {
             return { ...s, transform };
         });
     }
+}
+
+function applySurfaceGeometryVertexChanged(data: SurfaceGeometryVertexChangedEventData) {
+    const { surfaceId, vertices } = data;
+
+    surfaceGeometryStore(surfaceId).update(g => {
+        const {
+            vertices: oldVertices,
+            ...rest
+        } = g;
+        
+        const newVertices = structuredClone(oldVertices);
+        for (const { index, value } of vertices) {
+            newVertices[index] = value;
+        }
+        return {
+            ...rest,
+            vertices: newVertices
+        };
+    });
 }
 
 function registerSurfacePropertyHandler<K extends keyof Surface>(
@@ -168,5 +188,12 @@ export function registerSurfacesEventHandlers() {
         "Translated",
         (data) => applySurfacesTranslated(data),
         (data) => applySurfacesTranslated(data)
+    );
+
+    eventStore.registerHandler<SurfaceGeometryVertexChanged>(
+        "Surface",
+        "GeometryVertexChanged",
+        (data) => applySurfaceGeometryVertexChanged(data),
+        (data) => applySurfaceGeometryVertexChanged(data)
     );
 }

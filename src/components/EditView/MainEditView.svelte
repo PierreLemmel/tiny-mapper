@@ -10,7 +10,7 @@
     import { dragOrClick, type DistinctEvent } from "../../lib/ui/actions/dragOrClick";
     import { MainRaycaster } from "../../lib/rendering/main-raycaster";
     import type { SurfaceType } from "../../lib/logic/surfaces/surfaces";
-    import { clearSelection, selectSurface, topLevelSelectedSurfaces, type SelectSurfaceModifiers } from "../../lib/logic/surfaces/surface-selection";
+    import { belongsToCurrentSelection, clearSelection, selectSurface, topLevelSelectedSurfaces, type SelectSurfaceModifiers } from "../../lib/logic/surfaces/surface-selection";
     import { InputContexts } from "../../lib/ui/inputs/input-contexts";
     import { inputContext } from "../../lib/ui/actions/inputContext";
     import { registerMainEditViewHandlers, unregisterMainEditViewHandlers } from "../../lib/ui/inputs/rendering/main-edit-view-handlers";
@@ -69,7 +69,7 @@
         const ndcX = remap(x, 0, canvasWidth, -1, 1);
         const ndcY = remap(y, 0, canvasHeight, 1, -1);
 
-        const intersects = raycaster.castRay(ndcX, ndcY);
+        const intersects = raycaster.castRay(ndcX, ndcY, vertexThreshold);
         const modifiers: SelectSurfaceModifiers = { ctrlKey, shiftKey, metaKey };
         
         switch (intersects.type) {
@@ -83,6 +83,7 @@
         }
     }
 
+    $: vertexThreshold = $uiSettings.vertexSelectionThreshold / $mainRendering.zoom;
 
     function handleNothingClick(modifiers: SelectSurfaceModifiers) {
         if (modifiers.ctrlKey || modifiers.metaKey) {
@@ -95,15 +96,63 @@
         selectSurface(surfaceId, modifiers, { allowShiftAnchoring: false });
     }
 
+    let isDraggingSurfaces = false;
+    let dragPrevCanvasX = 0;
+    let dragPrevCanvasY = 0;
+
     function handleDragStart(e: DistinctEvent) {
+        if (!camera || !raycaster) return;
+
+        const ndcX = remap(e.x, 0, canvasWidth, -1, 1);
+        const ndcY = remap(e.y, 0, canvasHeight, 1, -1);
+        const rcResult = raycaster.castRay(ndcX, ndcY, vertexThreshold);
+
+        const modifiers: SelectSurfaceModifiers = {
+            ctrlKey: e.ctrlKey,
+            shiftKey: e.shiftKey,
+            metaKey: e.metaKey,
+        };
+
+        switch (rcResult.type) {
+            case "Nothing":
+                handleNothingClick(modifiers);
+                return;
+            case "Surface":
+            case "Vertex":
+                const hitSurfaceId = rcResult.surfaceId;
+
+                if (!belongsToCurrentSelection(hitSurfaceId)) {
+                    selectSurface(hitSurfaceId, modifiers, { allowShiftAnchoring: false });
+                }
+                break;
+        }
         isDragging = true;
+        if (translationType === "Surfaces") {
+            isDraggingSurfaces = true;
+            startTranslation("Surfaces");
+            dragPrevCanvasX = e.x;
+            dragPrevCanvasY = e.y;
+        } else {
+            isDraggingSurfaces = false;
+        }
     }
 
     function handleDragMove(e: DistinctEvent) {
+        if (!isDraggingSurfaces) return;
+        const zoom = $mainRendering.zoom;
+        const dx = e.x - dragPrevCanvasX;
+        const dy = e.y - dragPrevCanvasY;
+        dragPrevCanvasX = e.x;
+        dragPrevCanvasY = e.y;
+        translateSelectedSurfaces([dx / zoom, -dy / zoom]);
     }
 
     function handleDragEnd(e: DistinctEvent) {
         isDragging = false;
+        if (isDraggingSurfaces) {
+            doneTranslating("Surfaces");
+            isDraggingSurfaces = false;
+        }
     }
 
     let isTranslatingLeft = false;
@@ -146,43 +195,43 @@
         }
     }
 
-    let translationInterrupted = false;
+    let keyboardTranslationInterrupted = false;
 
-    function stopTranslationOnSelectionChange(surfaces: string[]) {
+    function stopKeyboardTranslationOnSelectionChange(surfaces: string[]) {
         if (!mounted) return;
 
         if (isTranslating) {
             doneTranslating(previousTranslationType);
-            translationInterrupted = true;
+            keyboardTranslationInterrupted = true;
         }
 
         previousTranslationType = translationType;
     }
-    $: stopTranslationOnSelectionChange($surfaceUI.selectedSurfaces);
+    $: stopKeyboardTranslationOnSelectionChange($surfaceUI.selectedSurfaces);
 
     function handleArrowLeftDown() {
-        handleTranslation("left");
+        handleKeyboardTranslation("left");
         isTranslatingLeft = true;
     }
     function handleArrowLeftUp() {
         isTranslatingLeft = false;
     }
     function handleArrowRightDown() {
-        handleTranslation("right");
+        handleKeyboardTranslation("right");
         isTranslatingRight = true;
     }
     function handleArrowRightUp() {
         isTranslatingRight = false;
     }
     function handleArrowUpDown() {
-        handleTranslation("up");
+        handleKeyboardTranslation("up");
         isTranslatingUp = true;
     }
     function handleArrowUpUp() {
         isTranslatingUp = false;
     }
     function handleArrowDownDown() {
-        handleTranslation("down");
+        handleKeyboardTranslation("down");
         isTranslatingDown = true;
     }
     function handleArrowDownUp() {
@@ -190,7 +239,6 @@
     }
 
     function startTranslation(type: TranslationType) {
-        
         switch (type) {
             case "Surfaces":
                 {
@@ -208,8 +256,8 @@
         }
     }
 
-    function handleTranslation(direction: "left" | "right" | "up" | "down") {
-        if (translationInterrupted) return;
+    function handleKeyboardTranslation(direction: "left" | "right" | "up" | "down") {
+        if (keyboardTranslationInterrupted) return;
 
         const speed = $uiSettings.arrowTranslationSpeed / $mainRendering.zoom;
 
@@ -257,12 +305,12 @@
             startTranslation(translationType);
         }
         else {
-            if (!translationInterrupted) {
+            if (!keyboardTranslationInterrupted) {
                 doneTranslating(translationType);
             }
         }
 
-        translationInterrupted = false;
+        keyboardTranslationInterrupted = false;
     }
     $: startAndStopTranslationEffect(isTranslating);
 

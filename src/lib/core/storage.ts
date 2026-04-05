@@ -1,5 +1,6 @@
 import type { Writable } from "svelte/store";
 import { getDb, type DbStore } from "./db";
+import { log } from "../logging/logger";
 
 export async function load<T>(dbStore: DbStore, key: string, defaultValue: T): Promise<T> {
     try {
@@ -29,7 +30,7 @@ export function saveOnChange<T>(store: Writable<T>, dbStore: DbStore, key: strin
         try {
             await db.put(dbStore, val, key);
         } catch (err){
-            console.error("Failed to save to database", err);
+            log.error("Failed to save to database", err);
         }
     });
 }

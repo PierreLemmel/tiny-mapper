@@ -17,6 +17,8 @@
     import VisibleCheckbox from "../../Shared/VisibleCheckbox.svelte";
     import ScaleEditor from "../../Shared/ScaleEditor.svelte";
     import type { Writable } from "svelte/store";
+    import GeometryEditor from "../../Shared/GeometryEditor.svelte";
+    import { surfaceGeometryStore } from "../../../lib/stores/surfaces";
 
     export let className: string|undefined = undefined;
 
@@ -161,9 +163,11 @@
     {#if $surface.type === "Quad"}
     <HorizontalSeparator className={separatorClasses} />
     <Foldable title="Geometry" bind:open={$surfaceUI.geometry.open}>
-        <div class="flex flex-col gap-2.5">
-            
-        </div>
+        <GeometryEditor geometry={surfaceGeometryStore($surface.id)} onVertexCommit={(index, oldValue, newValue) => eventStore.push({
+            category: "Surface", type: "GeometryVertexChanged",
+            forwardData: { surfaceId: $surface.id, vertices: [{ index, value: newValue }] },
+            backwardData: { surfaceId: $surface.id, vertices: [{ index, value: oldValue }] },
+        })} />
     </Foldable>
     {/if}
 

@@ -4,6 +4,7 @@ import { rootSurfaces, surfaceStore } from "../../stores/surfaces";
 import { eventStore } from "../../events/event-store";
 import type { SurfaceDeleted } from "../../events/surfaces/surfaces-event-types";
 import { deleteSurfaceAndChildren } from "./surfaces";
+import { log } from "../../logging/logger";
 
 let selectionAnchor: string | null = null;
 
@@ -120,14 +121,6 @@ export function clearSelection() {
     selectionAnchor = null;
 }
 
-export function addNextSurfaceToSelection() {
-    console.log("addNextSurfaceToSelection");
-}
-
-export function addPreviousSurfaceToSelection() {
-    console.log("addPreviousSurfaceToSelection");
-}
-
 export function selectNextSurface(modifiers?: Partial<SelectSurfaceModifiers>) {
     let idx = 0;
     const flatOrder = getFlatVisualOrder();
@@ -191,4 +184,16 @@ export function deleteSelectedSurfaces() {
     }));
 
     selectionAnchor = null;
+}
+
+export function belongsToCurrentSelection(id: string): boolean {
+    const topLvl = new Set(get(topLevelSelectedSurfaces));
+
+    let checkedId = id;
+
+    while (checkedId !== "root") {
+        if (topLvl.has(checkedId)) return true;
+        checkedId = get(surfaceStore(checkedId)).parentId;
+    }
+    return false;
 }

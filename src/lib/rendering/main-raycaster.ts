@@ -4,7 +4,8 @@ import type { MainScene } from "./main-scene";
 import { RenderingLayers } from "./rendering-layers";
 import type { SurfaceType } from "../logic/surfaces/surfaces";
 import { get } from "svelte/store";
-import { surfaceStore } from "../stores/surfaces";
+import { surfaceGeometryStore, surfaceStore } from "../stores/surfaces";
+import { log } from "../logging/logger";
 
 export type RaycastResult = {
     type: "Nothing";
@@ -12,6 +13,11 @@ export type RaycastResult = {
     type: "Surface";
     surfaceId: string;
     surfaceType: SurfaceType;
+} | {
+    type: "Vertex";
+    surfaceId: string;
+    surfaceType: SurfaceType;
+    vertices: number[];
 }
 
 export class MainRaycaster {
@@ -28,7 +34,7 @@ export class MainRaycaster {
         this.raycaster.layers.set(RenderingLayers.SURFACES);
     }
 
-    public castRay(ndcX: number, ndcY: number): RaycastResult {
+    public castRay(ndcX: number, ndcY: number, selectionThreshold: number): RaycastResult {
 
         this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this._camera.camera);
 
@@ -40,7 +46,8 @@ export class MainRaycaster {
 
         const {
             object,
-            face
+            face,
+            point
         } = intersects[0];
 
         const surfaceId = object.userData.id;
@@ -55,14 +62,34 @@ export class MainRaycaster {
 
             const surface = get(surfaceStore(surfaceId));
             if (surface.type !== "Quad") {
-                console.warn(`Raycast hit a non-quad surface '${surfaceId}' (type: ${surface.type})`);
+                log.warn(`Raycast hit a non-quad surface '${surfaceId}' (type: ${surface.type})`);
                 return { type: "Nothing" };
             }
 
-            const meshGeometry = (object as THREE.Mesh).geometry;
-            console.log(meshGeometry);
-            const worldCoords = [a, b, c].map(idx => idx);
-            console.log(worldCoords);
+            const { vertices } = get(surfaceGeometryStore(surfaceId))
+            
+            const hitVertices = [a, b, c].map(index => {
+                    const local = vertices[index];
+                    const world = object.localToWorld(new THREE.Vector3(local[0], local[1], 0));
+
+                    const distance = world.distanceToSquared(point);
+
+                    return { index, distance };
+                })
+                .filter(d => d.distance <= selectionThreshold * selectionThreshold)
+                .sort((a, b) => a.distance - b.distance)
+                .map(d => d.index);
+            
+            log.debug(hitVertices);
+
+            if (hitVertices.length > 0) {
+                return {
+                    type: "Vertex",
+                    surfaceId,
+                    surfaceType,
+                    vertices: hitVertices,
+                };
+            }
         }
 
 

@@ -1,4 +1,4 @@
-import { addNextSurfaceToSelection, addPreviousSurfaceToSelection, clearSelection, selectAllSurfaces, selectNextSurface, selectPreviousSurface } from "../../../logic/surfaces/surface-selection";
+import { clearSelection, selectAllSurfaces, selectNextSurface, selectPreviousSurface } from "../../../logic/surfaces/surface-selection";
 import { inputManager, type KeyboardKeyCombination } from "../input-manager";
 
 type MainEditViewHandler = {
