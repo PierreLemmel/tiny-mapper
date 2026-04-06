@@ -332,6 +332,8 @@
         camera = new MainCamera(width, height);
         renderer = new MainRenderer(canvas);
         raycaster = new MainRaycaster(camera, scene);
+
+        renderer.initialize(scene, camera, [width, height]);
         resize(width, height);
 
         function onWheel(e: WheelEvent) {

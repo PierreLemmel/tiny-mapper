@@ -17,7 +17,7 @@ import { RenderingLayers } from "./rendering-layers";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
-import { addOutlinerToObject, removeOutlinerFromObject } from "./outliner";
+import { MainOutliner } from "./main-outliner";
 
 type QuadSurfaceRenderData = {
     mesh: THREE.Mesh;
@@ -62,7 +62,8 @@ export class MainScene {
     private selectionBox: THREE.Group = new THREE.Group();
     private selectionBackgroundMaterial: THREE.MeshBasicMaterial = new THREE.MeshBasicMaterial();
     private selectionOutlineMaterial: LineMaterial = new LineMaterial();
-    private outlinedObjects = new Set<string>();
+
+    public outliner = new MainOutliner();
 
     private unsubscribeSelectionUI: () => void = () => {};
     private unsubscribeSelectionColor: () => void = () => {};           
@@ -585,14 +586,14 @@ export class MainScene {
         this.selectionBox.visible = false;
 
         if (selectedIds.length > 1) {
-            this.clearOutlinedObjects();
+            this.outliner.clear()
             this.updateSelectionBoxForManyItems(selectedIds);
         }
         else if (selectedIds.length === 1) {
 
             const surface = get(surfaceStore(selectedIds[0]));
             if (surface.type === "Group") {
-                this.clearOutlinedObjects();
+                this.outliner.clear();
                 this.updateSelectionBoxForManyItems(selectedIds);
             }
             else {
@@ -600,7 +601,7 @@ export class MainScene {
             }
         }
         else {
-            this.clearOutlinedObjects();
+            this.outliner.clear();
         }
     }
 
@@ -631,32 +632,15 @@ export class MainScene {
         this.selectionBox.scale.set(width + SELECTION_BOX_WIDTH / 2 - 1, height + SELECTION_BOX_WIDTH / 2 - 1, 1);
     }
 
-    private clearOutlinedObjects() {
-        for (const id of this.outlinedObjects.values()) {
-            const object = this.quadSurfaceMap.get(id)?.mesh;
-            if (!object) {
-                continue;
-            }
-
-            removeOutlinerFromObject(object);
-        }
-
-        this.outlinedObjects.clear();
-    }
-
     private updateSelectionForSingleItem(surfaceId: string) {
-        if (!this.outlinedObjects.has(surfaceId)) {
+        const obj = this.quadSurfaceMap.get(surfaceId)?.mesh;
 
-            this.clearOutlinedObjects();
-            const object = this.quadSurfaceMap.get(surfaceId)?.mesh;
-
-            if (!object) {
-                return;
-            }
-
-            addOutlinerToObject(object, this.selectionBackgroundMaterial, this.selectionOutlineMaterial);
-            this.outlinedObjects.add(surfaceId);
+        if (!obj) {
+            log.error(`Object not found for surface '${surfaceId}'`);
+            return;
         }
+
+        this.outliner.set(obj);
     }
 
     private static _instance: MainScene;
