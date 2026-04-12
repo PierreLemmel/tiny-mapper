@@ -79,8 +79,6 @@ export class MainRaycaster {
                 .filter(d => d.distance <= selectionThreshold * selectionThreshold)
                 .sort((a, b) => a.distance - b.distance)
                 .map(d => d.index);
-            
-            log.debug(hitVertices);
 
             if (hitVertices.length > 0) {
                 return {

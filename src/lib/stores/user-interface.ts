@@ -29,7 +29,10 @@ export type MappingUIData = {
 }
 
 export type SurfaceUIData = {
-    selectedSurfaces: string[]
+    selectedSurfaces: string[];
+    selectedHandles: {
+        [surfaceId: string]: number[];
+    };
     collapsedGroups: string[]
 
     baseProperties : {
@@ -92,6 +95,7 @@ const DEFAULT_MAPPING_UI_DATA: MappingUIData = {
 
 const DEFAULT_SURFACE_UI_DATA: SurfaceUIData = {
     selectedSurfaces: [],
+    selectedHandles: {},
     collapsedGroups: [],
 
     baseProperties: {

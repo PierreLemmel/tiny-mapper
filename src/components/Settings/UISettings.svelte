@@ -19,4 +19,14 @@
             step: 0.1,
         }}
     />
+    <Slider
+        label="Selection outline thickness"
+        bind:value={$uiSettings.selectionOutlineThickness}
+        options={{
+            type: 'value',
+            min: 0,
+            max: 20,
+            step: 0.1,
+        }}
+    />
 </div>

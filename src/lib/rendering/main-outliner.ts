@@ -41,17 +41,6 @@ export class MainOutliner {
         this.add(...objects)
     }
 
-    public remove(...objects: THREE.Object3D[]): void {
-        const selected = this._outlinedObjects;
-        let changed = false;
-        for (const obj of objects) {
-            changed ||= selected.delete(obj)
-        }
-        if (changed) {
-            this.dispatchOutlinedObjectsChanged();
-        }
-    }
-
     private dispatchOutlinedObjectsChanged(): void {
         const data = this.outlinedObjects;
         this.listeners.forEach(listener => listener(data));

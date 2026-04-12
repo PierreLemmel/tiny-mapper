@@ -21,6 +21,7 @@ export interface OutputsSettings {}
 export interface UISettings {
     selectionColor: RawColor;
     selectionOverlayOpacity: number;
+    selectionOutlineThickness: number;
 
     arrowTranslationSpeed: number;
     vertexSelectionThreshold: number;
@@ -38,8 +39,9 @@ const DEFAULT_OUTPUTS_SETTINGS: OutputsSettings = {};
 const DEFAULT_UI_SETTINGS: UISettings = {
     selectionColor: [0.486, 0.302, 1, 1],
     selectionOverlayOpacity: 0.35,
+    selectionOutlineThickness: 4.4,
     arrowTranslationSpeed: 10,
-    vertexSelectionThreshold: 8,
+    vertexSelectionThreshold: 10,
     handlesSize: 10,
     geometryEditorSensitivity: 1.0,
 };

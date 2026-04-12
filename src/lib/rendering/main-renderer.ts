@@ -6,6 +6,9 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass.js";
 import { log } from "../logging/logger";
+import { uiSettings } from "../stores/settings";
+import { rawColorToThreeColor } from "../core/color";
+import { ShaderPass } from "three/examples/jsm/Addons.js";
 
 const FPS_SAMPLE_COUNT = 10;
 
@@ -86,30 +89,44 @@ export class MainRenderer {
         const pixelRatio = this.renderer.getPixelRatio();
         this.composer.setPixelRatio(this.renderer.getPixelRatio());
 
+        this.initializeOutlinePass(scene, camera, [width, height], pixelRatio);
+
+        this.composer.addPass(this.renderPass);
+
+        this.composer.addPass(this.outlinePass!);
+        this.initialized = true;
+    }
+
+    private initializeOutlinePass(scene: MainScene, camera: MainCamera, [width, height]: [number, number], pixelRatio: number) {
         const outlineSize = new THREE.Vector2(width * pixelRatio, height * pixelRatio);
         this.outlinePass = new OutlinePass(outlineSize, scene.content, camera.camera);
 
         this.outlinePass.visibleEdgeColor.set(new THREE.Color(1.0, 0.0, 1.0));
-        this.outlinePass.edgeGlow = 0.0;
-        this.outlinePass.edgeStrength = 10;
-        this.outlinePass.edgeThickness = 3.0;
+
+        uiSettings.subscribe((settings) => {
+            if (!this.outlinePass) {
+                return;
+            }
+
+            const color = rawColorToThreeColor(settings.selectionColor);
+            this.outlinePass.visibleEdgeColor.set(color);
+            this.outlinePass.edgeStrength = settings.selectionOutlineThickness;
+            this.outlinePass.edgeThickness = settings.selectionOutlineThickness / 2;
+        });
 
         scene.outliner.addListener((objects) => {
 
             if (!this.outlinePass) {
                 return;
             }
-        
+
             this.outlinePass.selectedObjects = objects;
         });
-
-        this.composer.addPass(this.renderPass);
-        this.composer.addPass(this.outlinePass);
-
-        this.initialized = true;
     }
 
-    public render(scene: MainScene, camera: MainCamera) {
+
+
+    public render() {
         const startTime = performance.now();
 
         if (!this.initialized) {
@@ -118,7 +135,6 @@ export class MainRenderer {
         }
 
         this.composer.render();
-        //this.renderer.render(scene.content, camera.camera);
         const endTime = performance.now();
 
         this._renderingTime = (this._renderingTime * (FPS_SAMPLE_COUNT - 1) + (endTime - startTime)) / FPS_SAMPLE_COUNT;

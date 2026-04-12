@@ -16,7 +16,7 @@
     import { registerMainEditViewHandlers, unregisterMainEditViewHandlers } from "../../lib/ui/inputs/rendering/main-edit-view-handlers";
     import { inputManager } from "../../lib/ui/inputs/input-manager";
     import type { Position } from "../../lib/logic/mapping";
-    import { translateSelectedSurfaces } from "../../lib/logic/surfaces/surface-edit";
+    import { selectSurfaceHandles, translateSelectedSurfaces } from "../../lib/logic/surfaces/surface-edit";
     import { uiSettings } from "../../lib/stores/settings";
     import { surfaceStore } from "../../lib/stores/surfaces";
     import { get } from "svelte/store";
@@ -80,6 +80,9 @@
             case "Surface":
                 handleSurfaceClick(intersects.surfaceId, intersects.surfaceType, modifiers);
                 break;
+            case "Vertex":
+                handleVertexClick(intersects.surfaceId, intersects.surfaceType, intersects.vertices, modifiers);
+                break;
         }
     }
 
@@ -94,6 +97,15 @@
 
     function handleSurfaceClick(surfaceId: string, surfaceType: SurfaceType, modifiers: SelectSurfaceModifiers) {
         selectSurface(surfaceId, modifiers, { allowShiftAnchoring: false });
+    }
+
+    function handleVertexClick(surfaceId: string, surfaceType: SurfaceType, vertices: number[], modifiers: SelectSurfaceModifiers) {
+        if (!belongsToCurrentSelection(surfaceId)) {
+            selectSurface(surfaceId, modifiers, { allowShiftAnchoring: false });
+        }
+        
+        const mode = (modifiers.ctrlKey || modifiers.metaKey || modifiers.shiftKey) ? "Toggle" : "Replace";
+        selectSurfaceHandles([{ surfaceId, handles: vertices }], mode);
     }
 
     let isDraggingSurfaces = false;
@@ -371,9 +383,9 @@
         function loop() {
             rafId = requestAnimationFrame(loop);
 
-            if (!renderer || !camera) return;
+            if (!renderer) return;
 
-            renderer.render(scene, camera);
+            renderer.render();
         }
         loop();
 
@@ -448,6 +460,9 @@
 
             <div class="justify-self-start">Texture:</div>
             <div class="justify-self-end">{textureCount}</div>
+
+            <div class="justify-self-start">Selected Handles:</div>
+            <div class="justify-self-end">{JSON.stringify($surfaceUI.selectedHandles)}</div>
         </div>
     {/if}
 

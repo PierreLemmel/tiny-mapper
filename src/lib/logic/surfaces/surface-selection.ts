@@ -5,6 +5,7 @@ import { eventStore } from "../../events/event-store";
 import type { SurfaceDeleted } from "../../events/surfaces/surfaces-event-types";
 import { deleteSurfaceAndChildren } from "./surfaces";
 import { log } from "../../logging/logger";
+import { filterSelectedHandles } from "./surface-edit";
 
 let selectionAnchor: string | null = null;
 
@@ -75,6 +76,7 @@ export function selectSurface(id: string, modifiers: SelectSurfaceModifiers, opt
             surfaceUI.update(ui => ({
                 ...ui,
                 selectedSurfaces: rangeIds,
+                selectedHandles: filterSelectedHandles(ui.selectedHandles, rangeIds),
             }));
         }
         return;
@@ -86,6 +88,7 @@ export function selectSurface(id: string, modifiers: SelectSurfaceModifiers, opt
             selectedSurfaces: ui.selectedSurfaces.includes(id)
                 ? ui.selectedSurfaces.filter(s => s !== id)
                 : [...ui.selectedSurfaces, id],
+            selectedHandles: filterSelectedHandles(ui.selectedHandles, [id]),
         }));
         selectionAnchor = id;
         return;
@@ -100,6 +103,7 @@ export function selectSurface(id: string, modifiers: SelectSurfaceModifiers, opt
     surfaceUI.update(ui => ({
         ...ui,
         selectedSurfaces: [id],
+        selectedHandles: filterSelectedHandles(ui.selectedHandles, [id]),
     }));
     selectionAnchor = id;
 }
@@ -117,6 +121,7 @@ export function clearSelection() {
     surfaceUI.update(ui => ({
         ...ui,
         selectedSurfaces: [],
+        selectedHandles: {},
     }));
     selectionAnchor = null;
 }
@@ -166,6 +171,14 @@ export function deleteSelectedSurfaces() {
 
     const deletedSurfaces = topLevel.flatMap(id => deleteSurfaceAndChildren(id));
 
+    const deletedSet = new Set(deletedSurfaces.map(s => s.surface.id));
+    surfaceUI.update(ui => ({
+        ...ui,
+        selectedSurfaces: [],
+        selectedHandles: {},
+        collapsedGroups: ui.collapsedGroups.filter(id => !deletedSet.has(id)),
+    }));
+
     eventStore.push<SurfaceDeleted>({
         category: "Surface",
         type: "Deleted",
@@ -175,13 +188,6 @@ export function deleteSelectedSurfaces() {
         },
     });
 
-
-    const deletedSet = new Set(deletedSurfaces.map(s => s.surface.id));
-    surfaceUI.update(ui => ({
-        ...ui,
-        selectedSurfaces: [],
-        collapsedGroups: ui.collapsedGroups.filter(id => !deletedSet.has(id)),
-    }));
 
     selectionAnchor = null;
 }

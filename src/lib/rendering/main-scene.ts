@@ -60,13 +60,13 @@ export class MainScene {
     private groupSurfaceMap = new Map<string, GroupSurfaceRenderData>();
     private root: THREE.Group = new THREE.Group();
     private selectionBox: THREE.Group = new THREE.Group();
-    private selectionBackgroundMaterial: THREE.MeshBasicMaterial = new THREE.MeshBasicMaterial();
+    private singleSelectedObject: THREE.Object3D | null = null;
+    private selectionOverlayMaterial: THREE.MeshBasicMaterial = new THREE.MeshBasicMaterial();
     private selectionOutlineMaterial: LineMaterial = new LineMaterial();
 
     public outliner = new MainOutliner();
 
-    private unsubscribeSelectionUI: () => void = () => {};
-    private unsubscribeSelectionColor: () => void = () => {};           
+    private unsubscribes: (() => void)[] = [];
     public get content(): THREE.Scene {
         return this.scene;
     }
@@ -105,9 +105,9 @@ export class MainScene {
         eventStore.on("undo", e => this.handleEvent(e));
         eventStore.on("redo", e => this.handleEvent(e));
 
-        this.unsubscribeSelectionUI = surfaceUI.subscribe(ui => {
+        this.unsubscribes.push(surfaceUI.subscribe(ui => {
             this.updateSelectionItems();
-        });
+        }));
     }
 
     private createRoot() {
@@ -122,13 +122,13 @@ export class MainScene {
         this.scene.add(this.selectionBox);
 
         const selectionGeometry = new THREE.PlaneGeometry(1, 1);
-        this.selectionBackgroundMaterial = new THREE.MeshBasicMaterial({
+        this.selectionOverlayMaterial = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
             opacity: get(uiSettings).selectionOverlayOpacity,
             depthTest: false,
         });
-        const selectionBackground = new THREE.Mesh(selectionGeometry, this.selectionBackgroundMaterial);
+        const selectionBackground = new THREE.Mesh(selectionGeometry, this.selectionOverlayMaterial);
         selectionBackground.name = "Selection Background";
 
 
@@ -168,11 +168,11 @@ export class MainScene {
         selectionBackground.renderOrder = 998;
         selectionOutline.renderOrder = 999;
 
-        this.unsubscribeSelectionColor = uiSettings.subscribe(settings => {       
-            this.selectionBackgroundMaterial.opacity = settings.selectionOverlayOpacity;
-            this.selectionBackgroundMaterial.color.set(settings.selectionColor[0], settings.selectionColor[1], settings.selectionColor[2]);
+        this.unsubscribes.push(uiSettings.subscribe(settings => {       
+            this.selectionOverlayMaterial.opacity = settings.selectionOverlayOpacity;
+            this.selectionOverlayMaterial.color.set(settings.selectionColor[0], settings.selectionColor[1], settings.selectionColor[2]);
             this.selectionOutlineMaterial.color.set(settings.selectionColor[0], settings.selectionColor[1], settings.selectionColor[2]);
-        });
+        }));
     }
 
     private handleEvent(event: AppEvent) {
@@ -582,19 +582,24 @@ export class MainScene {
 
     private updateSelectionItems() {
         const selectedIds = get(surfaceUI).selectedSurfaces;
-
+        
         this.selectionBox.visible = false;
 
         if (selectedIds.length > 1) {
             this.outliner.clear()
             this.updateSelectionBoxForManyItems(selectedIds);
+            this.clearOldSelectionOverlay();
         }
         else if (selectedIds.length === 1) {
 
-            const surface = get(surfaceStore(selectedIds[0]));
+            const selectedId = selectedIds[0];
+
+            const surface = get(surfaceStore(selectedId));
+
             if (surface.type === "Group") {
                 this.outliner.clear();
                 this.updateSelectionBoxForManyItems(selectedIds);
+                this.clearOldSelectionOverlay();
             }
             else {
                 this.updateSelectionForSingleItem(selectedIds[0]);
@@ -602,6 +607,7 @@ export class MainScene {
         }
         else {
             this.outliner.clear();
+            this.clearOldSelectionOverlay();
         }
     }
 
@@ -635,12 +641,35 @@ export class MainScene {
     private updateSelectionForSingleItem(surfaceId: string) {
         const obj = this.quadSurfaceMap.get(surfaceId)?.mesh;
 
+        if (this.singleSelectedObject?.userData.id === `${surfaceId}-overlay`) {
+            return;
+        }
+
         if (!obj) {
             log.error(`Object not found for surface '${surfaceId}'`);
             return;
         }
 
+        this.clearOldSelectionOverlay();
+
+        const overlayMesh = new THREE.Mesh(obj.geometry, this.selectionOverlayMaterial);
+        overlayMesh.name = "Selection Overlay";
+        overlayMesh.userData.id = `${surfaceId}-overlay`;
+        overlayMesh.layers.enable(RenderingLayers.SELECTION_BOX);
+        overlayMesh.renderOrder = 999;
+
+        obj.add(overlayMesh);
+
         this.outliner.set(obj);
+        this.singleSelectedObject = overlayMesh;
+    }
+
+    private clearOldSelectionOverlay() {
+        if (this.singleSelectedObject) {
+            this.singleSelectedObject.removeFromParent();
+            this.singleSelectedObject.clear();
+            this.singleSelectedObject = null;
+        }
     }
 
     private static _instance: MainScene;
@@ -652,8 +681,10 @@ export class MainScene {
     }
 
     public dispose() {
-        this.unsubscribeSelectionUI();
-        this.unsubscribeSelectionColor();
+        for (const unsubscribe of this.unsubscribes) {
+            unsubscribe();
+        }
+        this.unsubscribes.length = 0;
 
         for (const quadSurfaceRenderData of this.quadSurfaceMap.values()) {
             quadSurfaceRenderData.unsubscribe();

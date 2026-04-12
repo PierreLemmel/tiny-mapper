@@ -1,3 +1,5 @@
+import * as THREE from "three";
+
 export type RawColor = [number, number, number, number]
 
 export interface HSVA {
@@ -149,4 +151,8 @@ export function rawColorToCssString(raw: RawColor): string {
 
 export function multiplyColors(color1: RawColor, color2: RawColor): RawColor {
     return [color1[0] * color2[0], color1[1] * color2[1], color1[2] * color2[2], color1[3] * color2[3]];
+}
+
+export function rawColorToThreeColor(raw: RawColor): THREE.Color {
+    return new THREE.Color(raw[0], raw[1], raw[2]);
 }
