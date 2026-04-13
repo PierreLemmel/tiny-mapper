@@ -1,5 +1,11 @@
 import { get, readonly, writable, type Writable } from "svelte/store";
-import { createRootMaterial, type RootMaterial, type Material } from "../logic/materials/materials";
+import {
+    createDefaultHiddenMaterialMaterial,
+    createRootMaterial,
+    DEFAULT_MATERIAL_ID,
+    type RootMaterial,
+    type Material,
+} from "../logic/materials/materials";
 import { load, saveOnChange } from "../core/storage";
 import { DbStores, getDb } from "../core/db";
 
@@ -46,6 +52,11 @@ export async function initMaterialsStores() {
 
     rootMaterials.set(await load(DbStores.materials, "root-materials", createRootMaterial()));
     saveOnChange(rootMaterials, DbStores.materials, "root-materials");
+
+    if (!materialStores.has(DEFAULT_MATERIAL_ID)) {
+        const defaultMaterial = createDefaultHiddenMaterialMaterial();
+        addMaterialToStores(defaultMaterial.id, defaultMaterial);
+    }
 }
 
 const materialsInternal = writable<{ [id: string]: Material }>({});
@@ -53,4 +64,17 @@ export const materials = readonly(materialsInternal);
 
 export function getAllMaterials(): Material[] {
     return Array.from(materialStores.values()).map(store => get(store));
+}
+
+export function getAllTags(): string[] {
+    const tags = new Set<string>();
+    for (const store of materialStores.values()) {
+        const material = get(store);
+        if (material.tags) {
+            for (const tag of material.tags) {
+                tags.add(tag);
+            }
+        }
+    }
+    return Array.from(tags).sort();
 }

@@ -2,14 +2,19 @@ import { createId, isWithinArray } from "../../core/utils";
 import { get } from "svelte/store";
 import { addMaterialToStores, deleteMaterialStore, getAllMaterials, materialStore, rootMaterials } from "../../stores/materials";
 import type { RawColor } from "../../core/color";
+import { DEFAULT_MATERIAL_TEMPLATE_ID } from "../material-templates/material-templates";
+
+export const DEFAULT_MATERIAL_ID = "default";
 
 type MaterialBase = {
     id: string;
     parentId: string | "root";
     name: string;
+    hidden?: boolean;
+    tags?: string[];
 }
 
-export type MaterialType = "Group" | "SolidColor" | "Root"
+export type MaterialType = "Group" | "SolidColor" | "Material" | "Root"
 
 type MaterialData<T extends MaterialType, D> = { type: T } & MaterialBase & D
 
@@ -21,13 +26,17 @@ export type GroupMaterial = MaterialData<"Group", {
     children: string[]
 }>
 
+export type MaterialMaterial = MaterialData<"Material", {
+    templateId: string;
+}>
+
 export type RootMaterial = {
     type: "Root";
     id: "root";
     children: string[]
 }
 
-export type Material = SolidColorMaterial | GroupMaterial
+export type Material = SolidColorMaterial | GroupMaterial | MaterialMaterial
 
 const MAX_ITERATIONS = 1000
 
@@ -71,6 +80,8 @@ export function addMaterial(material: Material, positionInChildren: number = -1)
             return createSolidColorMaterial(material, positionInChildren);
         case "Group":
             return createGroupMaterial(material, positionInChildren);
+        case "Material":
+            return createMaterialMaterial(material, positionInChildren);
     }
 }
 
@@ -141,6 +152,43 @@ export function createGroupMaterial(values: Partial<Omit<GroupMaterial, "type">>
     bindMaterialToParent(material, positionInChildren);
 
     return material;
+}
+
+export function createMaterialMaterialFromTemplate(
+    templateId: string,
+    values: Partial<Omit<MaterialMaterial, "type" | "templateId">> = {},
+    positionInChildren: number = -1
+) {
+    const name = nextAvailableName("Material");
+
+    const material: MaterialMaterial = {
+        name,
+        type: "Material",
+        templateId,
+        ...createMaterialBase(),
+        ...values
+    };
+
+    addMaterialToStores(material.id, material);
+    bindMaterialToParent(material, positionInChildren);
+
+    return material;
+}
+
+export function createMaterialMaterial(values: Partial<Omit<MaterialMaterial, "type">> = {}, positionInChildren: number = -1) {
+    const { templateId = DEFAULT_MATERIAL_TEMPLATE_ID, ...rest } = values;
+    return createMaterialMaterialFromTemplate(templateId, rest, positionInChildren);
+}
+
+export function createDefaultHiddenMaterialMaterial(): MaterialMaterial {
+    return {
+        id: DEFAULT_MATERIAL_ID,
+        name: "Default",
+        type: "Material",
+        templateId: DEFAULT_MATERIAL_TEMPLATE_ID,
+        parentId: "root",
+        hidden: true,
+    };
 }
 
 export function createRootMaterial(): RootMaterial {

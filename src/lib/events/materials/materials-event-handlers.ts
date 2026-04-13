@@ -31,6 +31,12 @@ export function registerMaterialsEventHandlers() {
         (data) => applyMaterialProperty(data)
     );
 
+    registerMaterialPropertyHandler(
+        "tags",
+        (data) => applyMaterialProperty(data),
+        (data) => applyMaterialProperty(data)
+    );
+
     eventStore.registerHandler<MaterialCreated>(
         "Material",
         "Created",

@@ -1,5 +1,5 @@
 import { get } from "svelte/store";
-import { surfaceStore } from "../../stores/surfaces";
+import { surfaceGeometryStore, surfaceStore } from "../../stores/surfaces";
 import type { Delta } from "../mapping";
 import { topLevelSelectedSurfaces } from "./surface-selection";
 import { surfaceUI, type SurfaceUIData } from "../../stores/user-interface";
@@ -19,6 +19,23 @@ function translateSurface(surfaceId: string, delta: Delta) {
 export function translateSelectedSurfaces(delta: Delta) {
     for (const surface of get(topLevelSelectedSurfaces)) {
         translateSurface(surface, delta);
+    }
+}
+
+export function translateSelectedHandles(delta: Delta) {
+    const ui = get(surfaceUI);
+    for (const [surfaceId, handles] of Object.entries(ui.selectedHandles)) {
+        if (handles.length === 0) continue;
+        surfaceGeometryStore(surfaceId).update(g => {
+            const newVertices = structuredClone(g.vertices);
+            for (const handleIndex of handles) {
+                newVertices[handleIndex] = [
+                    newVertices[handleIndex][0] + delta[0],
+                    newVertices[handleIndex][1] + delta[1],
+                ];
+            }
+            return { ...g, vertices: newVertices };
+        });
     }
 }
 
@@ -119,6 +136,11 @@ export function clearSelectedHandlesForSurfaces(surfaceIds: string[]) {
         }
         return { ...ui, selectedHandles: resultHandles };
     });
+}
+
+export function surfaceHasHandlesSelected(surfaceId: string): boolean {
+    const ui = get(surfaceUI);
+    return ui.selectedHandles[surfaceId]?.length > 0;
 }
 
 export function clearAllSelectedHandles() {

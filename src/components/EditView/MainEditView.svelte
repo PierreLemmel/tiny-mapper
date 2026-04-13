@@ -3,7 +3,7 @@
     import { MainScene } from "../../lib/rendering/main-scene";
     import { MainCamera, ZOOM_FACTOR, MIN_ZOOM, MAX_ZOOM } from "../../lib/rendering/main-camera";
     import { MainRenderer } from "../../lib/rendering/main-renderer";
-    import { renderingUI, surfaceUI } from "../../lib/stores/user-interface";
+    import { renderingUI, surfaceUI, type SurfaceUIData } from "../../lib/stores/user-interface";
     import { cn, remap } from "../../lib/core/utils";
     import { mainRendering } from "../../lib/stores/rendering";
     import { application } from "../../lib/stores/application";
@@ -16,11 +16,11 @@
     import { registerMainEditViewHandlers, unregisterMainEditViewHandlers } from "../../lib/ui/inputs/rendering/main-edit-view-handlers";
     import { inputManager } from "../../lib/ui/inputs/input-manager";
     import type { Position } from "../../lib/logic/mapping";
-    import { selectSurfaceHandles, translateSelectedSurfaces } from "../../lib/logic/surfaces/surface-edit";
+    import { clearAllSelectedHandles, clearSelectedHandlesForSurfaces, selectSurfaceHandles, surfaceHasHandlesSelected, translateSelectedHandles, translateSelectedSurfaces } from "../../lib/logic/surfaces/surface-edit";
     import { uiSettings } from "../../lib/stores/settings";
-    import { surfaceStore } from "../../lib/stores/surfaces";
+    import { surfaceGeometryStore, surfaceStore } from "../../lib/stores/surfaces";
     import { get } from "svelte/store";
-    import type { SurfacesTranslatedEventData } from "../../lib/events/surfaces/surfaces-event-types";
+    import type { SurfaceGeometryVertexChangedEventData, SurfacesTranslatedEventData } from "../../lib/events/surfaces/surfaces-event-types";
     import { eventStore } from "../../lib/events/event-store";
 
     let container: HTMLDivElement;
@@ -69,7 +69,7 @@
         const ndcX = remap(x, 0, canvasWidth, -1, 1);
         const ndcY = remap(y, 0, canvasHeight, 1, -1);
 
-        const intersects = raycaster.castRay(ndcX, ndcY, vertexThreshold);
+        const intersects = raycaster.castRay(ndcX, ndcY);
         const modifiers: SelectSurfaceModifiers = { ctrlKey, shiftKey, metaKey };
         
         switch (intersects.type) {
@@ -80,13 +80,11 @@
             case "Surface":
                 handleSurfaceClick(intersects.surfaceId, intersects.surfaceType, modifiers);
                 break;
-            case "Vertex":
+            case "Handle":
                 handleVertexClick(intersects.surfaceId, intersects.surfaceType, intersects.vertices, modifiers);
                 break;
         }
     }
-
-    $: vertexThreshold = $uiSettings.vertexSelectionThreshold / $mainRendering.zoom;
 
     function handleNothingClick(modifiers: SelectSurfaceModifiers) {
         if (modifiers.ctrlKey || modifiers.metaKey) {
@@ -96,7 +94,13 @@
     }
 
     function handleSurfaceClick(surfaceId: string, surfaceType: SurfaceType, modifiers: SelectSurfaceModifiers) {
-        selectSurface(surfaceId, modifiers, { allowShiftAnchoring: false });
+        if (surfaceHasHandlesSelected(surfaceId)) {
+            clearSelectedHandlesForSurfaces([surfaceId]);
+            updateTranslationType($surfaceUI);
+        }
+        else {
+            selectSurface(surfaceId, modifiers, { allowShiftAnchoring: false });
+        }
     }
 
     function handleVertexClick(surfaceId: string, surfaceType: SurfaceType, vertices: number[], modifiers: SelectSurfaceModifiers) {
@@ -111,13 +115,14 @@
     let isDraggingSurfaces = false;
     let dragPrevCanvasX = 0;
     let dragPrevCanvasY = 0;
+    let dragTranslationType: TranslationType = "None";
 
     function handleDragStart(e: DistinctEvent) {
         if (!camera || !raycaster) return;
 
         const ndcX = remap(e.x, 0, canvasWidth, -1, 1);
         const ndcY = remap(e.y, 0, canvasHeight, 1, -1);
-        const rcResult = raycaster.castRay(ndcX, ndcY, vertexThreshold);
+        const rcResult = raycaster.castRay(ndcX, ndcY);
 
         const modifiers: SelectSurfaceModifiers = {
             ctrlKey: e.ctrlKey,
@@ -129,19 +134,32 @@
             case "Nothing":
                 handleNothingClick(modifiers);
                 return;
+            case "Handle":
+                if (!belongsToCurrentSelection(rcResult.surfaceId)) {
+                    selectSurface(rcResult.surfaceId, modifiers, { allowShiftAnchoring: false });
+                }
+                const handleMode = modifiers.ctrlKey || modifiers.metaKey || modifiers.shiftKey ? "Toggle" : "Replace";
+                selectSurfaceHandles([{ surfaceId: rcResult.surfaceId, handles: rcResult.vertices }], handleMode);
+                updateTranslationType($surfaceUI);
+                break;
             case "Surface":
-            case "Vertex":
                 const hitSurfaceId = rcResult.surfaceId;
 
                 if (!belongsToCurrentSelection(hitSurfaceId)) {
                     selectSurface(hitSurfaceId, modifiers, { allowShiftAnchoring: false });
                 }
+
+                if (!(modifiers.ctrlKey || modifiers.metaKey || modifiers.shiftKey)) {
+                    clearAllSelectedHandles();
+                }
+                updateTranslationType($surfaceUI);
                 break;
         }
         isDragging = true;
-        if (translationType === "Surfaces") {
+        if (translationType === "Surfaces" || translationType === "Handles") {
             isDraggingSurfaces = true;
-            startTranslation("Surfaces");
+            dragTranslationType = translationType;
+            startTranslation(translationType);
             dragPrevCanvasX = e.x;
             dragPrevCanvasY = e.y;
         } else {
@@ -156,13 +174,17 @@
         const dy = e.y - dragPrevCanvasY;
         dragPrevCanvasX = e.x;
         dragPrevCanvasY = e.y;
-        translateSelectedSurfaces([dx / zoom, -dy / zoom]);
+        if (dragTranslationType === "Handles") {
+            translateSelectedHandles([dx / zoom, -dy / zoom]);
+        } else {
+            translateSelectedSurfaces([dx / zoom, -dy / zoom]);
+        }
     }
 
     function handleDragEnd(e: DistinctEvent) {
         isDragging = false;
         if (isDraggingSurfaces) {
-            doneTranslating("Surfaces");
+            doneTranslating(dragTranslationType);
             isDraggingSurfaces = false;
         }
     }
@@ -194,19 +216,22 @@
     }
 
     let storedData: Map<string, { position: Position }> = new Map();
-    type TranslationType = "None"|"Surfaces";
+    let storedHandleData: Map<string, Map<number, Position>> = new Map();
+    type TranslationType = "None"|"Surfaces"|"Handles";
 
     let previousTranslationType: TranslationType = "None";
     let translationType: TranslationType = "None";
-    $: {
-        if ($surfaceUI.selectedSurfaces.length > 0) {
+
+    function updateTranslationType(surfaceUIData: SurfaceUIData) {
+        const hasSelectedHandles = Object.values(surfaceUIData.selectedHandles).some(h => h.length > 0);
+        if (hasSelectedHandles && surfaceUIData.selectedSurfaces.length > 0) {
+            translationType = "Handles";
+        }
+        else if ($surfaceUI.selectedSurfaces.length > 0) {
             translationType = "Surfaces";
         }
-        else {
-            translationType = "None";
-        }
     }
-
+    $: updateTranslationType($surfaceUI);
     let keyboardTranslationInterrupted = false;
 
     function stopKeyboardTranslationOnSelectionChange(surfaces: string[]) {
@@ -263,6 +288,21 @@
                 }
                 break;
 
+            case "Handles":
+                {
+                    storedHandleData.clear();
+                    for (const [surfaceId, handles] of Object.entries($surfaceUI.selectedHandles)) {
+                        if (handles.length === 0) continue;
+                        const geom = get(surfaceGeometryStore(surfaceId));
+                        const handleMap = new Map<number, Position>();
+                        for (const handleIndex of handles) {
+                            handleMap.set(handleIndex, [...geom.vertices[handleIndex]] as Position);
+                        }
+                        storedHandleData.set(surfaceId, handleMap);
+                    }
+                }
+                break;
+
             case "None":
                 break;
         }
@@ -275,7 +315,12 @@
 
         const deltaX = direction === "left" ? -speed : direction === "right" ? speed : 0;
         const deltaY = direction === "up" ? speed : direction === "down" ? -speed : 0;
-        translateSelectedSurfaces([deltaX, deltaY]);
+
+        if (translationType === "Handles") {
+            translateSelectedHandles([deltaX, deltaY]);
+        } else {
+            translateSelectedSurfaces([deltaX, deltaY]);
+        }
     }
 
     function doneTranslating(type: TranslationType) {
@@ -302,6 +347,37 @@
                         forwardData,
                         backwardData,
                     });
+                }
+                break;
+
+            case "Handles":
+                {
+                    for (const [surfaceId, handleMap] of storedHandleData.entries()) {
+                        const handles = Array.from(handleMap.keys());
+                        const geom = get(surfaceGeometryStore(surfaceId));
+
+                        const forwardData: SurfaceGeometryVertexChangedEventData = {
+                            surfaceId,
+                            vertices: handles.map(index => ({
+                                index,
+                                value: [...geom.vertices[index]] as Position,
+                            })),
+                        };
+                        const backwardData: SurfaceGeometryVertexChangedEventData = {
+                            surfaceId,
+                            vertices: handles.map(index => ({
+                                index,
+                                value: [...handleMap.get(index)!] as Position,
+                            })),
+                        };
+
+                        eventStore.push({
+                            category: "Surface",
+                            type: "GeometryVertexChanged",
+                            forwardData,
+                            backwardData,
+                        });
+                    }
                 }
                 break;
 

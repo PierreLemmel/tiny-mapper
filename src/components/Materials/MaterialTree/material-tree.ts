@@ -7,9 +7,8 @@ import {
     materialTreeSnapshotsEqual,
 } from "../../../lib/logic/materials/material-tree-snapshot";
 import { materialUI } from "../../../lib/stores/user-interface";
-import type { PointerModifiers } from "../../../lib/ui/longpress-action";
 import { rootMaterials, materialStore } from "../../../lib/stores/materials";
-import { deleteMaterialAndChildren } from "../../../lib/logic/materials/materials";
+import { DEFAULT_MATERIAL_ID, deleteMaterialAndChildren } from "../../../lib/logic/materials/materials";
 import { tick } from "svelte";
 import type { MaterialDeleted } from "../../../lib/events/materials/materials-event-types";
 
@@ -46,7 +45,13 @@ function getFlatVisualOrder(): string[] {
     return result;
 }
 
-export function selectMaterial(id: string, modifiers: PointerModifiers) {
+export type SelectMaterialModifiers = {
+    ctrlKey: boolean;
+    metaKey: boolean;
+    shiftKey: boolean;
+}
+
+export function selectMaterial(id: string, modifiers: SelectMaterialModifiers) {
     const isCtrl = modifiers.ctrlKey || modifiers.metaKey;
 
     if (modifiers.shiftKey && selectionAnchor) {
@@ -124,7 +129,11 @@ export function deleteSelectedMaterials() {
     const selected = get(materialUI).selectedMaterials;
     if (selected.length === 0) return;
 
-    const topLevel = getTopLevelSelected(selected);
+       const topLevel = getTopLevelSelected(selected).filter(id => id !== DEFAULT_MATERIAL_ID);
+
+    if (topLevel.length === 0) {
+        return;
+    }
 
     const deletedMaterials = topLevel.flatMap(id => deleteMaterialAndChildren(id));
 

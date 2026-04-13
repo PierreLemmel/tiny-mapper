@@ -17,7 +17,7 @@
     } from "./material-tree";
     import MaterialTreeDisplayItem from "./MaterialTreeDisplayItem.svelte";
     import { FLIP_DURATION_MS, MATERIALS_DND_TARGET_CLASSES, MATERIALS_DND_TARGET_STYLE, MATERIALS_DND_TYPE } from '../../../lib/ui/animations';
-    import { rootMaterials } from '../../../lib/stores/materials';
+    import { materials, rootMaterials } from '../../../lib/stores/materials';
     import { inputManager } from "../../../lib/ui/inputs/input-manager";
     import { InputContexts } from "../../../lib/ui/inputs/input-contexts";
     import { inputContext } from "../../../lib/ui/actions/inputContext";
@@ -27,8 +27,43 @@
     let items: MaterialDisplayTreeItem[] = [];
     let isDragging = false;
 
+    function materialMatchesFilter(id: string, tagFilter: string | null, searchQuery: string): boolean {
+        const m = $materials[id];
+        if (!m) return true;
+        if (m.hidden) return false;
+
+        if (tagFilter !== null) {
+            if (!m.tags || !m.tags.includes(tagFilter)) {
+                if (m.type === "Group") {
+                    const groupMat = m as import("../../../lib/logic/materials/materials").GroupMaterial;
+                    return groupMat.children.some(cid => materialMatchesFilter(cid, tagFilter, searchQuery));
+                }
+                return false;
+            }
+        }
+
+        if (searchQuery.length > 0) {
+            const query = searchQuery.toLowerCase();
+            const nameMatch = m.name.toLowerCase().includes(query);
+            const tagMatch = m.tags?.some(t => t.toLowerCase().includes(query)) ?? false;
+            if (!nameMatch && !tagMatch) {
+                if (m.type === "Group") {
+                    const groupMat = m as import("../../../lib/logic/materials/materials").GroupMaterial;
+                    return groupMat.children.some(cid => materialMatchesFilter(cid, null, searchQuery));
+                }
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     $: if (!isDragging) {
-        items = $rootMaterials.children.map(id => ({ id }));
+        const tagFilter = $materialUI.tagFilter;
+        const searchQuery = $materialUI.searchQuery;
+        items = $rootMaterials.children
+            .filter(id => materialMatchesFilter(id, tagFilter, searchQuery))
+            .map(id => ({ id }));
     }
 
     function handleDndConsider(e: CustomEvent<DndEvent<MaterialDisplayTreeItem>>) {

@@ -39,6 +39,7 @@ export type SurfaceUIData = {
         open: boolean;
         colorOpen: boolean;
         colorColorMode: "hsv" | "rgb" | "hex";
+        materialOpen: boolean;
     }
 
     transform: {
@@ -59,7 +60,7 @@ export type SurfaceUIData = {
     }
 
     material: {
-        open: boolean
+        open: boolean;
     }
 }
 
@@ -70,6 +71,8 @@ export type RenderingUIData = {
 export type MaterialUIData = {
     selectedMaterials: string[]
     collapsedGroups: string[]
+    tagFilter: string | null
+    searchQuery: string
 
     baseProperties: {
         open: boolean;
@@ -102,6 +105,7 @@ const DEFAULT_SURFACE_UI_DATA: SurfaceUIData = {
         open: true,
         colorOpen: false,
         colorColorMode: "hsv",
+        materialOpen: false,
     },
     transform: {
         open: false,
@@ -128,6 +132,8 @@ const DEFAULT_RENDERING_UI_DATA: RenderingUIData = {
 const DEFAULT_MATERIAL_UI_DATA: MaterialUIData = {
     selectedMaterials: [],
     collapsedGroups: [],
+    tagFilter: null,
+    searchQuery: "",
 
     baseProperties: {
         open: true,

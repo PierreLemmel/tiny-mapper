@@ -1,6 +1,6 @@
 import { eventStore } from "../event-store";
 import { addSurface, deleteSurfaceAndChildren, type Surface, type SurfaceTransform } from "../../logic/surfaces/surfaces";
-import type { ApplySurfacePropertyData, ApplySurfaceTransformPropertyData, SurfaceCreated, SurfaceDeleted, SurfaceGeometryVertexChanged, SurfaceGeometryVertexChangedEventData, SurfacePropertyEvent, SurfacesTranslated, SurfacesTranslatedEventData, SurfaceTransformPropertyEvent, SurfaceTreeMoved } from "./surfaces-event-types";
+import type { ApplySurfacePropertyData, ApplySurfaceTransformPropertyData, SurfaceCreated, SurfaceDeleted, SurfaceGeometryVertexChanged, SurfaceGeometryVertexChangedEventData, SurfaceMaterialChanged, SurfaceMaterialChangedEventData, SurfacePropertyEvent, SurfacesTranslated, SurfacesTranslatedEventData, SurfaceTransformPropertyEvent, SurfaceTreeMoved } from "./surfaces-event-types";
 import { applySurfaceTreeSnapshot } from "../../logic/surfaces/surface-tree-snapshot";
 import { surfaceGeometryStore, surfaceStore } from "../../stores/surfaces";
 import { surfaceUI } from "../../stores/user-interface";
@@ -41,6 +41,16 @@ function applySurfacesTranslated(stead: SurfacesTranslatedEventData) {
             return { ...s, transform };
         });
     }
+}
+
+function applySurfaceMaterialId(data: SurfaceMaterialChangedEventData) {
+    const { surfaceId, materialId } = data;
+    surfaceStore(surfaceId).update(s => {
+        if (s.type !== "Quad") {
+            return s;
+        }
+        return { ...s, materialId };
+    });
 }
 
 function applySurfaceGeometryVertexChanged(data: SurfaceGeometryVertexChangedEventData) {
@@ -195,5 +205,12 @@ export function registerSurfacesEventHandlers() {
         "GeometryVertexChanged",
         (data) => applySurfaceGeometryVertexChanged(data),
         (data) => applySurfaceGeometryVertexChanged(data)
+    );
+
+    eventStore.registerHandler<SurfaceMaterialChanged>(
+        "Surface",
+        "MaterialChanged",
+        (data) => applySurfaceMaterialId(data),
+        (data) => applySurfaceMaterialId(data)
     );
 }

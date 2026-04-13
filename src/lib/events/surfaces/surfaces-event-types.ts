@@ -74,3 +74,13 @@ export type SurfaceGeometryVertexChanged = AppEvent<"Surface", "GeometryVertexCh
     SurfaceGeometryVertexChangedEventData,
     SurfaceGeometryVertexChangedEventData
 >;
+
+export type SurfaceMaterialChangedEventData = {
+    surfaceId: string;
+    materialId: string;
+};
+
+export type SurfaceMaterialChanged = AppEvent<"Surface", "MaterialChanged",
+    SurfaceMaterialChangedEventData,
+    SurfaceMaterialChangedEventData
+>;

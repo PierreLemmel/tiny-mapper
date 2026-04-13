@@ -29,4 +29,22 @@
             step: 0.1,
         }}
     />
+    <Slider
+        label="Handles size"
+        bind:value={$uiSettings.handlesSize}
+        options={{
+            type: 'value',
+            min: 1,
+            max: 40,
+            step: 1,
+        }}
+    />
+    <FoldableColorPicker
+        title="Selected handle color"
+        bind:value={$uiSettings.handlesSelectedColor}
+    />
+    <FoldableColorPicker
+        title="Unselected handle color"
+        bind:value={$uiSettings.handlesUnselectedColor}
+    />
 </div>

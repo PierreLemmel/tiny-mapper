@@ -11,6 +11,7 @@ export type MaterialPropertyEvent<K extends keyof Material> = AppEvent<"Material
     ApplyMaterialPropertyData<K>>;
 
 export type MaterialNameChanged = MaterialPropertyEvent<"name">;
+export type MaterialTagsChanged = MaterialPropertyEvent<"tags">;
 
 export type MaterialCreated = AppEvent<"Material", "Created", {
     material: Material,

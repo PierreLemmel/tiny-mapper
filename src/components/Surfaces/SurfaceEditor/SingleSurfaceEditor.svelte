@@ -19,6 +19,7 @@
     import type { Writable } from "svelte/store";
     import GeometryEditor from "../../Shared/GeometryEditor.svelte";
     import { surfaceGeometryStore } from "../../../lib/stores/surfaces";
+    import MaterialSelector from "../../Shared/MaterialSelector.svelte";
 
     export let className: string|undefined = undefined;
 
@@ -70,6 +71,22 @@
     <HorizontalSeparator className={separatorClasses} />
     <Foldable title="Base Properties" bind:open={$surfaceUI.baseProperties.open}>
         <div class="flex flex-col gap-2.5">
+            {#if $surface.type === "Quad"}
+            <MaterialSelector
+                title="Material"
+                bind:open={$surfaceUI.material.open}
+                bind:value={$surface.materialId}
+                onCommit={(oldVal, newVal) => {
+                    if (oldVal !== undefined) {
+                        eventStore.push({
+                            category: "Surface", type: "MaterialIdChanged",
+                            forwardData: { surfaceId: $surface.id, materialId: newVal },
+                            backwardData: { surfaceId: $surface.id, materialId: oldVal },
+                        });
+                    }
+                }}
+            />
+            {/if}
             <Slider
                 label="Opacity"
                 bind:value={$surface.opacity}
@@ -187,6 +204,7 @@
         </div>
     </Foldable>
 
+    {#if $surface.type === "Quad"}
     <HorizontalSeparator className={separatorClasses} />
     <Foldable title="Material" bind:open={$surfaceUI.material.open}>
         <div class="flex flex-col gap-2">
@@ -194,4 +212,5 @@
             <div>PROP 2</div>
         </div>
     </Foldable>
+    {/if}
 </div>

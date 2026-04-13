@@ -20,9 +20,10 @@
     } from "./material-tree";
     import { FLIP_DURATION_MS, MATERIALS_DND_TARGET_CLASSES, MATERIALS_DND_TARGET_STYLE, MATERIALS_DND_TYPE } from '../../../lib/ui/animations';
     import ChevronIcon from '../../../icons/ChevronIcon.svelte';
-    import { materialStore } from '../../../lib/stores/materials';
+    import { materialStore, materials } from '../../../lib/stores/materials';
     import SolidColorIcon from '../../../icons/SolidColorIcon.svelte';
     import { rawColorToCssString } from '../../../lib/core/color';
+    import TextureIcon from '../../../icons/TextureIcon.svelte';
 
     export let item: MaterialDisplayTreeItem;
     export let indent: number = 0;
@@ -50,8 +51,43 @@
     let childItems: MaterialDisplayTreeItem[] = [];
     let isChildDragging = false;
 
+    function childMatchesFilter(cid: string, tagFilter: string | null, searchQuery: string): boolean {
+        const cm = $materials[cid];
+        if (!cm) return true;
+        if (cm.hidden) return false;
+
+        if (tagFilter !== null) {
+            if (!cm.tags || !cm.tags.includes(tagFilter)) {
+                if (cm.type === "Group") {
+                    return (cm as import("../../../lib/logic/materials/materials").GroupMaterial)
+                        .children.some(gcid => childMatchesFilter(gcid, tagFilter, searchQuery));
+                }
+                return false;
+            }
+        }
+
+        if (searchQuery.length > 0) {
+            const query = searchQuery.toLowerCase();
+            const nameMatch = cm.name.toLowerCase().includes(query);
+            const tagMatch = cm.tags?.some(t => t.toLowerCase().includes(query)) ?? false;
+            if (!nameMatch && !tagMatch) {
+                if (cm.type === "Group") {
+                    return (cm as import("../../../lib/logic/materials/materials").GroupMaterial)
+                        .children.some(gcid => childMatchesFilter(gcid, null, searchQuery));
+                }
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     $: if (!isChildDragging && type === "Group" && $material.type === "Group") {
-        childItems = $material.children.map((cid: string) => ({ id: cid }));
+        const tagFilter = $materialUI.tagFilter;
+        const searchQuery = $materialUI.searchQuery;
+        childItems = $material.children
+            .filter((cid: string) => childMatchesFilter(cid, tagFilter, searchQuery))
+            .map((cid: string) => ({ id: cid }));
     }
 
     function handleChildConsider(e: CustomEvent<DndEvent<MaterialDisplayTreeItem>>) {
@@ -120,6 +156,8 @@
             <GroupIcon className={iconClasses} />
         {:else if type === "SolidColor"}
             <SolidColorIcon className={cn(iconClasses, "stroke-[1.5px]")} />
+        {:else if type === "Material"}
+            <TextureIcon className={cn(iconClasses, "stroke-[1.5px]")} />
         {/if}
         <NameDisplay
             bind:this={nameDisplay}

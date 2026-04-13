@@ -26,6 +26,8 @@ export interface UISettings {
     arrowTranslationSpeed: number;
     vertexSelectionThreshold: number;
     handlesSize: number;
+    handlesSelectedColor: RawColor;
+    handlesUnselectedColor: RawColor;
     geometryEditorSensitivity: number;
 }
 
@@ -42,7 +44,9 @@ const DEFAULT_UI_SETTINGS: UISettings = {
     selectionOutlineThickness: 4.4,
     arrowTranslationSpeed: 10,
     vertexSelectionThreshold: 10,
-    handlesSize: 10,
+    handlesSize: 15,
+    handlesSelectedColor: [1, 1, 1, 1],
+    handlesUnselectedColor: [0.486, 0.302, 1, 1],
     geometryEditorSensitivity: 1.0,
 };
 

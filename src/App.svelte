@@ -10,6 +10,7 @@
     import SettingsWindow from "./components/Windows/SettingsWindow.svelte";
     import { initRenderingStore } from "./lib/stores/rendering";
     import { initSettingsStores } from "./lib/stores/settings";
+    import { initMaterialTemplatesStores } from "./lib/stores/material-templates";
     import { registerAllEventHandlers } from "./lib/events/register-handlers";
     import { eventStore } from "./lib/events/event-store";
     import { inputManager } from "./lib/ui/inputs/input-manager";
@@ -18,6 +19,7 @@
     import { registerGlobalHandlers, unregisterGlobalHandlers } from "./lib/ui/inputs/global-handlers";
 
     onMount(async () => {
+        await initMaterialTemplatesStores();
         await Promise.all([
             initSurfacesStores(),
             initMaterialsStores(),

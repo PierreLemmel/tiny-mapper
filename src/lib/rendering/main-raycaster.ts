@@ -4,25 +4,31 @@ import type { MainScene } from "./main-scene";
 import { RenderingLayers } from "./rendering-layers";
 import type { SurfaceType } from "../logic/surfaces/surfaces";
 import { get } from "svelte/store";
-import { surfaceGeometryStore, surfaceStore } from "../stores/surfaces";
+import { surfaceStore } from "../stores/surfaces";
 import { log } from "../logging/logger";
+import { mainRendering } from "../stores/rendering";
+import { uiSettings } from "../stores/settings";
+import type { MainSceneHandlePickEntry } from "./main-scene-types";
 
-export type RaycastResult = {
-    type: "Nothing";
-} | {
-    type: "Surface";
-    surfaceId: string;
-    surfaceType: SurfaceType;
-} | {
-    type: "Vertex";
-    surfaceId: string;
-    surfaceType: SurfaceType;
-    vertices: number[];
-}
+export type RaycastResult =
+    | {
+          type: "Nothing";
+      }
+    | {
+          type: "Surface";
+          surfaceId: string;
+          surfaceType: SurfaceType;
+      }
+    | {
+          type: "Handle";
+          surfaceId: string;
+          surfaceType: SurfaceType;
+          vertices: number[];
+      };
 
 export class MainRaycaster {
     private raycaster: THREE.Raycaster;
-    
+
     private _camera: MainCamera;
     private _scene: MainScene;
 
@@ -31,65 +37,52 @@ export class MainRaycaster {
         this._scene = scene;
 
         this.raycaster = new THREE.Raycaster();
-        this.raycaster.layers.set(RenderingLayers.SURFACES);
+        this.raycaster.layers.enable(RenderingLayers.SURFACES);
+        this.raycaster.layers.enable(RenderingLayers.HANDLES);
     }
 
-    public castRay(ndcX: number, ndcY: number, selectionThreshold: number): RaycastResult {
+    public castRay(ndcX: number, ndcY: number): RaycastResult {
+        const zoom = get(mainRendering).zoom;
+        const handlesSize = get(uiSettings).handlesSize;
+        this.raycaster.params.Points.threshold = (handlesSize * 0.5) / zoom;
 
         this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this._camera.camera);
 
         const intersects = this.raycaster.intersectObjects(this._scene.content.children);
 
+        const handlePickList = intersects.filter(
+            (i): i is THREE.Intersection & { index: number } =>
+                i.index !== undefined &&
+                Array.isArray((i.object as THREE.Object3D).userData.handlePick)
+        );
+
+        if (handlePickList.length > 0) {
+            handlePickList.sort(
+                (a, b) => (a.distanceToRay ?? Infinity) - (b.distanceToRay ?? Infinity)
+            );
+            const hit = handlePickList[0];
+            const pick = (hit.object.userData.handlePick as MainSceneHandlePickEntry[])[hit.index];
+            const surface = get(surfaceStore(pick.surfaceId));
+            if (surface.type !== "Quad") {
+                log.warn(`Handle pick referred to non-quad surface '${pick.surfaceId}' (type: ${surface.type})`);
+                return { type: "Nothing" };
+            }
+            return {
+                type: "Handle",
+                surfaceId: pick.surfaceId,
+                surfaceType: surface.type,
+                vertices: [pick.vertexIndex],
+            };
+        }
+
         if (intersects.length === 0) {
             return { type: "Nothing" };
         }
 
-        const {
-            object,
-            face,
-            point
-        } = intersects[0];
+        const { object } = intersects[0];
 
         const surfaceId = object.userData.id;
         const surfaceType = object.userData.type as SurfaceType;
-        
-        if (face) {
-            const {
-                a,
-                b,
-                c,
-            } = face;
-
-            const surface = get(surfaceStore(surfaceId));
-            if (surface.type !== "Quad") {
-                log.warn(`Raycast hit a non-quad surface '${surfaceId}' (type: ${surface.type})`);
-                return { type: "Nothing" };
-            }
-
-            const { vertices } = get(surfaceGeometryStore(surfaceId))
-            
-            const hitVertices = [a, b, c].map(index => {
-                    const local = vertices[index];
-                    const world = object.localToWorld(new THREE.Vector3(local[0], local[1], 0));
-
-                    const distance = world.distanceToSquared(point);
-
-                    return { index, distance };
-                })
-                .filter(d => d.distance <= selectionThreshold * selectionThreshold)
-                .sort((a, b) => a.distance - b.distance)
-                .map(d => d.index);
-
-            if (hitVertices.length > 0) {
-                return {
-                    type: "Vertex",
-                    surfaceId,
-                    surfaceType,
-                    vertices: hitVertices,
-                };
-            }
-        }
-
 
         return {
             type: "Surface",

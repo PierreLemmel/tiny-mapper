@@ -35,6 +35,7 @@ export class MainCamera {
         this._camera.position.set(0, 0, CAMERA_Z_POSITION);
 
         this._camera.layers.enable(RenderingLayers.SURFACES);
+        this._camera.layers.enable(RenderingLayers.HANDLES);
         this._camera.layers.enable(RenderingLayers.SELECTION_BOX);
 
         this._unsubscribe = mainRendering.subscribe(({ position, zoom }) => {

@@ -9,6 +9,7 @@ import type { BlendMode, Position, Scale, SurfaceFlip, UV } from "../mapping";
 import type { RawColor } from "../../core/color";
 import { createId, isWithinArray } from "../../core/utils";
 import { get } from "svelte/store";
+import { DEFAULT_MATERIAL_ID } from "../materials/materials";
 
 const DEFAULT_SCALE: Scale = [1, 1]
 
@@ -47,6 +48,7 @@ type SurfaceData<T extends SurfaceType, D> = { type: T } & SurfaceBase & D
 
 export type QuadSurface = SurfaceData<"Quad", {
     geometry: QuadGeometry;
+    materialId: string;
 }>
 
 export type GroupSurface = SurfaceData<"Group", {
@@ -188,6 +190,7 @@ export function createQuadSurface(values: Partial<Omit<QuadSurface, "type">> = {
         type: "Quad",
         ...createSurfaceBase(),
         geometry: createDefaultQuadGeometry(),
+        materialId: DEFAULT_MATERIAL_ID,
         ...values
     }
 
