@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
+    import { onMount } from "svelte";
     import { EditorView, basicSetup } from "codemirror";
     import { EditorState } from "@codemirror/state";
     import { javascript } from "@codemirror/lang-javascript";
@@ -9,10 +9,13 @@
     export let value: string = "";
     export let className: string | undefined = undefined;
     export let onChange: (value: string) => void = () => {};
+    export let onCommit: ((oldValue: string, newValue: string) => void) | undefined = undefined;
 
     let container: HTMLDivElement;
     let view: EditorView | undefined;
     let skipNextUpdate = false;
+    let commitBaseline = "";
+    $: commitHandler = onCommit;
 
     function createExtensions() {
         return [
@@ -30,7 +33,7 @@
             EditorView.theme({
                 "&": {
                     fontSize: "12px",
-                    maxHeight: "300px",
+                    height: "100%",
                 },
                 ".cm-scroller": {
                     overflow: "auto",
@@ -53,10 +56,22 @@
             }),
             parent: container,
         });
-    });
+        commitBaseline = value;
 
-    onDestroy(() => {
-        view?.destroy();
+        const onBlur = () => {
+            if (!commitHandler || !view) return;
+            const current = view.state.doc.toString();
+            if (current !== commitBaseline) {
+                commitHandler(commitBaseline, current);
+                commitBaseline = current;
+            }
+        };
+        view.dom.addEventListener("blur", onBlur);
+
+        return () => {
+            view?.dom.removeEventListener("blur", onBlur);
+            view?.destroy();
+        };
     });
 
     $: if (view && !skipNextUpdate) {
@@ -69,6 +84,7 @@
                     insert: value,
                 },
             });
+            commitBaseline = value;
         }
     } else {
         skipNextUpdate = false;

@@ -9,6 +9,7 @@ const MAPPING_UI_STORAGE_KEY = "tm-mapping-ui-content"
 const SURFACE_STORAGE_KEY = "tm-surface-ui-content"
 const RENDERING_UI_STORAGE_KEY = "tm-rendering-ui-content"
 const MATERIAL_STORAGE_KEY = "tm-material-ui-content"
+const LIBRARY_STORAGE_KEY = "tm-library-ui-content"
 
 export type GlobalUIData = {
     activeTab: number
@@ -81,6 +82,15 @@ export type MaterialUIData = {
     }
 }
 
+export type LibraryUIData = {
+    activeTab: number
+    shaders: {
+        selectedTemplateId: string | null
+        activeShaderTab: 0 | 1
+        leftPanelSize: number
+    }
+}
+
 const DEFAULT_GLOBAL_UI_DATA: GlobalUIData = {
     activeTab: 0,
 }
@@ -142,11 +152,21 @@ const DEFAULT_MATERIAL_UI_DATA: MaterialUIData = {
     },
 }
 
+const DEFAULT_LIBRARY_UI_DATA: LibraryUIData = {
+    activeTab: 0,
+    shaders: {
+        selectedTemplateId: null,
+        activeShaderTab: 0,
+        leftPanelSize: 300,
+    },
+}
+
 export const globalUI = writable<GlobalUIData>(DEFAULT_GLOBAL_UI_DATA)
 export const mappingUI = writable<MappingUIData>(DEFAULT_MAPPING_UI_DATA)
 export const surfaceUI = writable<SurfaceUIData>(DEFAULT_SURFACE_UI_DATA)
 export const renderingUI = writable<RenderingUIData>(DEFAULT_RENDERING_UI_DATA)
 export const materialUI = writable<MaterialUIData>(DEFAULT_MATERIAL_UI_DATA)
+export const libraryUI = writable<LibraryUIData>(DEFAULT_LIBRARY_UI_DATA)
 
 export async function initUIStores() {
     globalUI.set(await load(STORE_UI, GLOBAL_UI_STORAGE_KEY, DEFAULT_GLOBAL_UI_DATA));
@@ -154,10 +174,12 @@ export async function initUIStores() {
     surfaceUI.set(await load(STORE_UI, SURFACE_STORAGE_KEY, DEFAULT_SURFACE_UI_DATA));
     renderingUI.set(await load(STORE_UI, RENDERING_UI_STORAGE_KEY, DEFAULT_RENDERING_UI_DATA));
     materialUI.set(await load(STORE_UI, MATERIAL_STORAGE_KEY, DEFAULT_MATERIAL_UI_DATA));
+    libraryUI.set(await load(STORE_UI, LIBRARY_STORAGE_KEY, DEFAULT_LIBRARY_UI_DATA));
 
     saveOnChange(globalUI, STORE_UI, GLOBAL_UI_STORAGE_KEY);
     saveOnChange(mappingUI, STORE_UI, MAPPING_UI_STORAGE_KEY);
     saveOnChange(surfaceUI, STORE_UI, SURFACE_STORAGE_KEY);
     saveOnChange(renderingUI, STORE_UI, RENDERING_UI_STORAGE_KEY);
     saveOnChange(materialUI, STORE_UI, MATERIAL_STORAGE_KEY);
+    saveOnChange(libraryUI, STORE_UI, LIBRARY_STORAGE_KEY);
 }

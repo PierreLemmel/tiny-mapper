@@ -6,6 +6,7 @@
     export let onCommit: (oldValue: string, newValue: string) => void = () => {};
     export let editable: boolean = true;
     export let className: string | undefined = undefined;
+    export let uppercase: boolean = false;
 
     let editing = false;
     let inputEl: HTMLInputElement;
@@ -65,6 +66,7 @@
             "transition-colors duration-150",
             editable && "hover:bg-neutral-800/60 cursor-text",
             !editable && "cursor-default",
+            uppercase && "uppercase",
             className
         )}
         on:dblclick|stopPropagation={startEditing}
