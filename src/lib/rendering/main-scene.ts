@@ -4,7 +4,6 @@ import { rootSurfaces } from "../stores/surfaces";
 import { eventStore, type AppEvent } from "../events/event-store";
 import { surfaceUI } from "../stores/user-interface";
 import { log } from "../logging/logger";
-import { MainOutliner } from "./main-outliner";
 import { defaultHierarchyData, type GroupSurfaceRenderData, type QuadSurfaceRenderData } from "./main-scene-types";
 import { MainSceneHandlesManager } from "./main-scene-handles-manager";
 import { MainSceneHierarchyManager } from "./main-scene-hierarchy-manager";
@@ -22,8 +21,6 @@ export class MainScene {
     private selectionManager: MainSceneSelectionManager | null = null;
     private handlesManager: MainSceneHandlesManager | null = null;
     private hierarchyManager: MainSceneHierarchyManager | null = null;
-
-    public outliner = new MainOutliner();
 
     private unsubscribes: (() => void)[] = [];
 
@@ -51,7 +48,6 @@ export class MainScene {
             this.scene,
             this.quadSurfaceMap,
             this.groupSurfaceMap,
-            this.outliner
         );
         this.selectionManager.initialize();
 

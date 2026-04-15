@@ -11,6 +11,13 @@ export type UV = [number, number]
 
 export type SurfaceFlip = [boolean, boolean]
 
+export type Rect = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 export const SCREEN_X_MIN = -999.99;
 export const SCREEN_X_MAX = 999.99;
 export const SCREEN_Y_MIN = -999.99;

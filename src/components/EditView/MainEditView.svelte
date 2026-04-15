@@ -45,11 +45,11 @@
         renderer?.resize(width, height);
     }
 
-    let fps: number;
-    let renderingTime: number;
-    let timeBetweenFrames: number;
-    let geometryCount: number;
-    let textureCount: number;
+    let fps: number = 0;
+    let renderingTime: number = 0;
+    let timeBetweenFrames: number = 0;
+    let geometryCount: number = 0;
+    let textureCount: number = 0;
 
     let isDragging = false;
 
@@ -421,7 +421,7 @@
         renderer = new MainRenderer(canvas);
         raycaster = new MainRaycaster(camera, scene);
 
-        renderer.initialize(scene, camera, [width, height]);
+        renderer.initialize();
         resize(width, height);
 
         function onWheel(e: WheelEvent) {
@@ -459,9 +459,14 @@
         function loop() {
             rafId = requestAnimationFrame(loop);
 
-            if (!renderer) return;
+            if (!renderer || !camera || !scene) return;
 
-            renderer.render();
+            renderer.renderMainscene(camera, scene, {
+                x: 0,
+                y: 0,
+                width: canvasWidth,
+                height: canvasHeight,
+            });
         }
         loop();
 
@@ -520,13 +525,13 @@
             "text-xs text-neutral-200"
         )}>
             <div class="justify-self-start">FPS:</div>
-            <div class="justify-self-end">{fps?.toFixed(1)}</div>
+            <div class="justify-self-end">{fps.toFixed(1)}</div>
 
             <div class="justify-self-start">Rendering Time:</div>
-            <div class="justify-self-end">{renderingTime?.toFixed(2)}ms</div>
+            <div class="justify-self-end">{renderingTime.toFixed(2)}ms</div>
 
             <div class="justify-self-start">Time Between Frames:</div>
-            <div class="justify-self-end">{timeBetweenFrames?.toFixed(2)}ms</div>
+            <div class="justify-self-end">{timeBetweenFrames.toFixed(2)}ms</div>
 
             <div class="justify-self-start">Rendering percentage:</div>
             <div class="justify-self-end">{((renderingTime / timeBetweenFrames) * 100).toFixed(2)}%</div>
@@ -536,9 +541,6 @@
 
             <div class="justify-self-start">Texture:</div>
             <div class="justify-self-end">{textureCount}</div>
-
-            <div class="justify-self-start">Selected Handles:</div>
-            <div class="justify-self-end">{JSON.stringify($surfaceUI.selectedHandles)}</div>
         </div>
     {/if}
 

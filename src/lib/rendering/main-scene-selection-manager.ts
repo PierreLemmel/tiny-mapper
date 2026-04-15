@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { get } from "svelte/store";
-import { surfaceStore } from "../stores/surfaces";
+import { surfaceGeometryStore, surfaceStore } from "../stores/surfaces";
 import { surfaceUI } from "../stores/user-interface";
 import { uiSettings } from "../stores/settings";
 import { log } from "../logging/logger";
@@ -8,7 +8,6 @@ import { RenderingLayers } from "./rendering-layers";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
-import { MainOutliner } from "./main-outliner";
 import type { GroupSurfaceRenderData, QuadSurfaceRenderData } from "./main-scene-types";
 import { CAMERA_Z_POSITION } from "./main-camera";
 
@@ -19,25 +18,49 @@ export class MainSceneSelectionManager {
     private scene: THREE.Scene;
     private quadSurfaceMap: Map<string, QuadSurfaceRenderData>;
     private groupSurfaceMap: Map<string, GroupSurfaceRenderData>;
-    private outliner: MainOutliner;
 
     private selectionBox: THREE.Group = new THREE.Group();
-    private singleSelectedObject: THREE.Object3D | null = null;
-    private selectionOverlayMaterial: THREE.MeshBasicMaterial = new THREE.MeshBasicMaterial();
-    private selectionOutlineMaterial: LineMaterial = new LineMaterial();
+    private singleSelectedOverlayObject: THREE.Object3D | null = null;
+    private singleSelectedOutlineObject: THREE.Object3D | null = null;
+    private singleSelectedObjectGeometryCallbackUnsub: (() => void) | null = null;
+    private selectionOverlayMaterial: THREE.MeshBasicMaterial;
+    private selectionBoxMaterial: LineMaterial;
+    private selectionOutlineMaterial: THREE.LineBasicMaterial;
 
     private unsubscribes: (() => void)[] = [];
 
     public constructor(
         scene: THREE.Scene,
         quadSurfaceMap: Map<string, QuadSurfaceRenderData>,
-        groupSurfaceMap: Map<string, GroupSurfaceRenderData>,
-        outliner: MainOutliner
+        groupSurfaceMap: Map<string, GroupSurfaceRenderData>
     ) {
         this.scene = scene;
         this.quadSurfaceMap = quadSurfaceMap;
         this.groupSurfaceMap = groupSurfaceMap;
-        this.outliner = outliner;
+
+        this.selectionOverlayMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: get(uiSettings).selectionOverlayOpacity,
+            depthTest: false,
+        });
+
+        this.selectionBoxMaterial = new LineMaterial({
+            color: 0xffffff,
+            linewidth: SELECTION_BOX_WIDTH,
+            resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
+            depthWrite: false,
+            depthTest: false,
+            transparent: true,
+        });
+
+        this.selectionOutlineMaterial = new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            linewidth: SELECTION_BOX_WIDTH,
+            depthWrite: false,
+            depthTest: false,
+            transparent: true,
+        });
     }
 
     public initialize() {
@@ -46,12 +69,7 @@ export class MainSceneSelectionManager {
         this.scene.add(this.selectionBox);
 
         const selectionGeometry = new THREE.PlaneGeometry(1, 1);
-        this.selectionOverlayMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            transparent: true,
-            opacity: get(uiSettings).selectionOverlayOpacity,
-            depthTest: false,
-        });
+        
         const selectionBackground = new THREE.Mesh(selectionGeometry, this.selectionOverlayMaterial);
         selectionBackground.name = "Selection Background";
 
@@ -64,16 +82,7 @@ export class MainSceneSelectionManager {
             -0.5, -0.5, 0,
         ]);
 
-        this.selectionOutlineMaterial = new LineMaterial({
-            color: 0xfffff,
-            linewidth: SELECTION_BOX_WIDTH,
-            resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
-            depthWrite: false,
-            depthTest: false,
-            transparent: true,
-        });
-
-        const selectionOutline = new Line2(outlineGeometry, this.selectionOutlineMaterial);
+        const selectionOutline = new Line2(outlineGeometry, this.selectionBoxMaterial);
         selectionOutline.name = "Selection Outline";
 
         this.selectionBox.add(selectionBackground);
@@ -95,11 +104,18 @@ export class MainSceneSelectionManager {
                     settings.selectionColor[1],
                     settings.selectionColor[2]
                 );
+                this.selectionBoxMaterial.color.set(
+                    settings.selectionColor[0],
+                    settings.selectionColor[1],
+                    settings.selectionColor[2]
+                );
                 this.selectionOutlineMaterial.color.set(
                     settings.selectionColor[0],
                     settings.selectionColor[1],
                     settings.selectionColor[2]
                 );
+                this.selectionOutlineMaterial.linewidth = settings.selectionOutlineThickness;
+                this.selectionBoxMaterial.linewidth = settings.selectionOutlineThickness;
             })
         );
     }
@@ -110,7 +126,6 @@ export class MainSceneSelectionManager {
         this.selectionBox.visible = false;
 
         if (selectedIds.length > 1) {
-            this.outliner.clear();
             this.updateSelectionBoxForManyItems(selectedIds);
             this.clearOldSelectionOverlay();
         } else if (selectedIds.length === 1) {
@@ -119,14 +134,12 @@ export class MainSceneSelectionManager {
             const surface = get(surfaceStore(selectedId));
 
             if (surface.type === "Group") {
-                this.outliner.clear();
                 this.updateSelectionBoxForManyItems(selectedIds);
                 this.clearOldSelectionOverlay();
             } else {
                 this.updateSelectionForSingleItem(selectedIds[0]);
             }
         } else {
-            this.outliner.clear();
             this.clearOldSelectionOverlay();
         }
     }
@@ -161,7 +174,7 @@ export class MainSceneSelectionManager {
     private updateSelectionForSingleItem(surfaceId: string) {
         const obj = this.quadSurfaceMap.get(surfaceId)?.mesh;
 
-        if (this.singleSelectedObject?.userData.id === `${surfaceId}-overlay`) {
+        if (this.singleSelectedOverlayObject?.userData.id === `${surfaceId}-overlay`) {
             return;
         }
 
@@ -176,19 +189,45 @@ export class MainSceneSelectionManager {
         overlayMesh.name = "Selection Overlay";
         overlayMesh.userData.id = `${surfaceId}-overlay`;
         overlayMesh.layers.enable(RenderingLayers.SELECTION_BOX);
-        overlayMesh.renderOrder = 999;
+        overlayMesh.renderOrder = 998;
+
+        const edgeGeometry = new THREE.EdgesGeometry(obj.geometry);
+        const lines = new THREE.LineSegments(edgeGeometry, this.selectionOutlineMaterial);
+        lines.name = "Selection Outline";
+        lines.userData.id = `${surfaceId}-outline`;
+        lines.layers.enable(RenderingLayers.SELECTION_BOX);
+        lines.renderOrder = 997;
 
         obj.add(overlayMesh);
+        obj.add(lines);
 
-        this.outliner.set(obj);
-        this.singleSelectedObject = overlayMesh;
+        this.singleSelectedObjectGeometryCallbackUnsub = surfaceGeometryStore(surfaceId).subscribe(g => {
+            const oldGeometry = lines.geometry;
+            const newGeometry = new THREE.EdgesGeometry(obj.geometry);
+            lines.geometry = newGeometry;
+            oldGeometry.dispose();
+        });
+
+        this.singleSelectedOverlayObject = overlayMesh;
+        this.singleSelectedOutlineObject = lines;
     }
 
     private clearOldSelectionOverlay() {
-        if (this.singleSelectedObject) {
-            this.singleSelectedObject.removeFromParent();
-            this.singleSelectedObject.clear();
-            this.singleSelectedObject = null;
+
+        if (this.singleSelectedObjectGeometryCallbackUnsub) {
+            this.singleSelectedObjectGeometryCallbackUnsub();
+            this.singleSelectedObjectGeometryCallbackUnsub = null;
+        }
+
+        if (this.singleSelectedOverlayObject) {
+            this.singleSelectedOverlayObject.removeFromParent();
+            this.singleSelectedOverlayObject.clear();
+            this.singleSelectedOverlayObject = null;
+        }
+        if (this.singleSelectedOutlineObject) {
+            this.singleSelectedOutlineObject.removeFromParent();
+            this.singleSelectedOutlineObject.clear();
+            this.singleSelectedOutlineObject = null;
         }
     }
 

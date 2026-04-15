@@ -17,6 +17,7 @@
     import { application } from "./lib/stores/application";
     import LoadingWindow from "./components/Windows/LoadingWindow.svelte";
     import { registerGlobalHandlers, unregisterGlobalHandlers } from "./lib/ui/inputs/global-handlers";
+    import RenderingContext from "./components/Rendering/RenderingContext.svelte";
 
     onMount(async () => {
         await initMaterialTemplatesStores();
@@ -53,16 +54,19 @@
     {#if $application.loaded}
     <TopMenuBar tabs={["Mapping", "Outputs", "Library", "Settings"]} bind:activeTab={$globalUI.activeTab} />
 
-    <div class="flex-1 min-h-0">
-        {#if $globalUI.activeTab === 0}
-            <MappingWindow className="" />
-        {:else if $globalUI.activeTab === 1}
-            <OutputsWindow />
-        {:else if $globalUI.activeTab === 2}
-            <LibraryWindow />
-        {:else if $globalUI.activeTab === 3}
-            <SettingsWindow />
-        {/if}
+    <div class="flex-1 min-h-0 relative">
+        <RenderingContext className="absolute inset-0 w-full h-full" />
+        <div class="absolute inset-0 w-full h-full">
+            {#if $globalUI.activeTab === 0}
+                <MappingWindow className="" />
+            {:else if $globalUI.activeTab === 1}
+                <OutputsWindow />
+            {:else if $globalUI.activeTab === 2}
+                <LibraryWindow />
+            {:else if $globalUI.activeTab === 3}
+                <SettingsWindow />
+            {/if}
+        </div>
     </div>
     {:else}
     <LoadingWindow />

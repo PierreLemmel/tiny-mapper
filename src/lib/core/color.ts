@@ -1,5 +1,8 @@
 import * as THREE from "three";
 
+export const PRIMARY_COLOR = [0, 0.898, 1, 1];
+export const SECONDARY_COLOR = [0.486, 0.302, 1, 1];
+
 export type RawColor = [number, number, number, number]
 
 export interface HSVA {
