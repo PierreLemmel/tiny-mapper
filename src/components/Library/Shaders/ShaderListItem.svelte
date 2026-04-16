@@ -19,9 +19,10 @@
 
 <div
     class={cn(
-        "group flex flex-row items-center gap-2 w-full px-3 py-2.5",
+        "group flex flex-row items-center gap-2 w-full pr-3 py-2.5",
         "transition-colors duration-150 cursor-pointer",
-        active ? "bg-primary-400/10" : "hover:bg-neutral-800/50",
+        active ? "bg-primary-400/25" : "hover:bg-neutral-800/50",
+        active ? "pl-2.5 border-l-3 border-secondary-400/70" : "pl-3"
     )}
     on:click={() => onSelect(templateId)}
     on:keydown={(e) => e.key === "Enter" && onSelect(templateId)}
@@ -31,8 +32,8 @@
     <ShaderThumbnail name={$template.name} className="size-10 rounded-md" />
     <div class="flex flex-col gap-0.5 min-w-0 flex-1">
         <NameDisplay
+            className={active ? "text-neutral-100" : "text-neutral-300"}
             bind:value={$template.name}
-            uppercase={true}
             onCommit={(oldVal, newVal) => {
                 eventStore.push({
                     category: "MaterialTemplate",
@@ -42,7 +43,10 @@
                 });
             }}
         />
-        <span class="text-neutral-500 text-[0.6rem] uppercase tracking-wider pl-1.5">
+        <span class={cn(
+            "text-[0.6rem] uppercase tracking-wider pl-1.5",
+            active ? "text-neutral-300" : "text-neutral-400"
+        )}>
             {$template.type === "SurfaceMaterial" ? "Surface" : $template.type}
         </span>
     </div>

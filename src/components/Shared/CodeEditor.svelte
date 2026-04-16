@@ -3,7 +3,7 @@
     import { EditorView, basicSetup } from "codemirror";
     import { EditorState } from "@codemirror/state";
     import { javascript } from "@codemirror/lang-javascript";
-    import { oneDark } from "@codemirror/theme-one-dark";
+    import { vsCodeDark } from '@fsegurai/codemirror-theme-vscode-dark'
     import { cn } from "../../lib/core/utils";
 
     export let value: string = "";
@@ -21,7 +21,7 @@
         return [
             basicSetup,
             javascript(),
-            oneDark,
+            vsCodeDark,
             EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
                     skipNextUpdate = true;

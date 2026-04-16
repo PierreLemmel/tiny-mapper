@@ -20,6 +20,9 @@
     import SplitPanels from "../../Shared/SplitPanels.svelte";
     import ShaderPreview from "./ShaderPreview.svelte";
     import ShaderListItem from "./ShaderListItem.svelte";
+    import TabPanel from "../../Shared/TabPanel.svelte";
+    import Button from "../../Shared/Button.svelte";
+    import PlayIcon from "../../../icons/PlayIcon.svelte";
 
     export let className: string | undefined = undefined;
     
@@ -95,6 +98,10 @@
             store.update(t => ({ ...t, ...changes }));
         }
     }
+
+    function onCompile() {
+        console.log("compile");
+    }
 </script>
 
 <SplitPanels
@@ -130,64 +137,40 @@
 
     <div slot="second" class="flex flex-col flex-1 min-w-0 overflow-hidden h-full">
         {#if selectedTemplate}
-            <div class="flex flex-row items-center justify-between px-4 py-2.5 shrink-0 border-b border-neutral-800 gap-4">
-                <input
-                    type="text"
-                    value={selectedTemplate.name}
-                    on:focus={() => {
-                        nameCommitStart = selectedTemplate.name;
+            <div class="flex flex-row items-center justify-between px-4 py-2.5 shrink-0 gap-4">
+                <NameDisplay
+                    className="text-neutral-200"
+                    bind:value={selectedTemplate.name}
+                    onCommit={(oldVal, newVal) => {
+                        eventStore.push({
+                            category: "MaterialTemplate",
+                            type: "NameChanged",
+                            forwardData: { templateId: selectedTemplate.id, name: newVal },
+                            backwardData: { templateId: selectedTemplate.id, name: oldVal },
+                        });
                     }}
-                    on:input={(e) => updateTemplate(selectedTemplate.id, { name: e.currentTarget.value })}
-                    on:blur={(e) => {
-                        const newVal = e.currentTarget.value;
-                        if (newVal !== nameCommitStart) {
-                            eventStore.push({
-                                category: "MaterialTemplate",
-                                type: "NameChanged",
-                                forwardData: { templateId: selectedTemplate.id, name: newVal },
-                                backwardData: { templateId: selectedTemplate.id, name: nameCommitStart },
-                            });
-                        }
-                    }}
-                    class={cn(
-                        "bg-transparent text-neutral-200 text-xs font-medium uppercase tracking-wider",
-                        "border-b border-transparent outline-none min-w-0 flex-1",
-                        "focus:border-neutral-600 transition-colors duration-150",
-                    )}
-                    aria-label="Shader name"
                 />
-                <div class="flex flex-row items-center gap-1 shrink-0">
-                    <button
-                        type="button"
-                        class={cn(
-                            "px-3 py-1 text-[0.625rem] font-medium uppercase tracking-wider rounded-md transition-colors duration-150",
-                            $libraryUI.shaders.activeShaderTab === 0
-                                ? "bg-neutral-700 text-neutral-100"
-                                : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800",
-                        )}
-                        on:click={() => $libraryUI.shaders.activeShaderTab = 0}
-                    >
-                        Fragment.glsl
-                    </button>
-                    <button
-                        type="button"
-                        class={cn(
-                            "px-3 py-1 text-[0.625rem] font-medium uppercase tracking-wider rounded-md transition-colors duration-150",
-                            $libraryUI.shaders.activeShaderTab === 1
-                                ? "bg-neutral-700 text-neutral-100"
-                                : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800",
-                        )}
-                        on:click={() => $libraryUI.shaders.activeShaderTab = 1}
-                    >
-                        Vertex.glsl
-                    </button>
-                </div>
-            </div>
+                <Button variant="primary" onClick={onCompile}>
+                    <div class="flex flex-row items-center justify-center gap-1.5">
+                        <span class="uppercase tracking-wider text-[0.75rem] font-medium">Compile</span>
+                        <PlayIcon className="size-4 shrink-0" />
+                    </div>
+                </Button>
 
-            <div class="flex-1 overflow-auto p-3 min-h-0 relative">
+            </div>
+            <div class="w-1/2">
+                <TabPanel
+                    tabs={["Fragment.glsl", "Vertex.glsl"]}
+                    bind:activeTab={$libraryUI.shaders.activeShaderTab}
+                    className="flex-0"
+                />
+            </div>
+            
+
+            <div class="flex-1 overflow-auto min-h-0">
                 {#if $libraryUI.shaders.activeShaderTab === 0}
                     <CodeEditor
-                        className="h-full"
+                        className="h-full rounded-none"
                         value={selectedTemplate.fragmentShader}
                         onChange={(v) => updateTemplate(selectedTemplate.id, { fragmentShader: v })}
                         onCommit={(oldVal, newVal) => {

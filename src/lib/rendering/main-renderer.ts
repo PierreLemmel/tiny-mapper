@@ -5,6 +5,9 @@ import type { MainCamera } from "./main-camera";
 import { log } from "../logging/logger";
 import type { Rect } from "../logic/mapping";
 import { createId, remap } from "../core/utils";
+import { hsvaToRgba, NEUTRAL_COLOR, rawColorToThreeColor } from "../core/color";
+import { uiSettings } from "../stores/settings";
+import { get } from "svelte/store";
 
 const FPS_SAMPLE_COUNT = 10;
 
@@ -86,8 +89,10 @@ export class MainRenderer {
 
         const endTime = performance.now();
 
-        const viewport = new THREE.Vector4();
-        this.renderer.getViewport(viewport);
+        this.renderer.setClearAlpha(0);
+        this.renderer.setClearColor(rawColorToThreeColor(get(uiSettings).renderingBackgroundColor), 0);
+        this.renderer.clear();
+        this.renderer.setClearAlpha(1);
 
         const canvasRect = this.canvas.getBoundingClientRect();
         for (const item of this._renderingItems.values()) {
@@ -135,7 +140,6 @@ export class MainRenderer {
 
     public getNDCCoordinates(clientX: number, clientY: number): [number, number] {
         const {
-            height: canvasHeight,
             top: canvasTop,
             left: canvasLeft,
             bottom: canvasBottom,
@@ -144,8 +148,7 @@ export class MainRenderer {
 
         const ndcX = remap(clientX, canvasLeft, canvasRight, -1, 1);
         const ndcY = remap(clientY, canvasTop, canvasBottom, 1, -1);
-        console.log(clientX, clientY);
-        console.log(ndcX, ndcY);
+        
         return [ndcX, ndcY];
     }
 

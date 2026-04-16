@@ -1,7 +1,8 @@
 import * as THREE from "three";
 
-export const PRIMARY_COLOR = [0, 0.898, 1, 1];
-export const SECONDARY_COLOR = [0.486, 0.302, 1, 1];
+export const PRIMARY_COLOR: RawColor = [0, 0.898, 1, 1];
+export const SECONDARY_COLOR: RawColor = [0.486, 0.302, 1, 1];
+export const NEUTRAL_COLOR: RawColor = [0.016, 0.016, 0.0175, 1];
 
 export type RawColor = [number, number, number, number]
 

@@ -12,7 +12,7 @@
     }
 </script>
 
-<div class={cn("panel flex flex-col h-full", className)}>
+<div class={cn("flex flex-col h-full", className)}>
     <div class="flex shrink-0 bg-neutral-900">
         {#each tabs as tab, i}
             <button
@@ -20,7 +20,7 @@
                     "relative flex-1 h-9 text-[0.6875rem] font-medium tracking-widest uppercase",
                     "transition-colors duration-150",
                     i === activeTab
-                        ? "text-neutral-100"
+                        ? "text-secondary-500"
                         : "text-neutral-500 hover:text-neutral-300"
                 )}
                 on:click={() => selectTab(i)}

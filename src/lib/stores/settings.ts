@@ -1,7 +1,7 @@
 import { writable } from "svelte/store";
 import { DbStores } from "../core/db";
 import { load, saveOnChange } from "../core/storage";
-import { PRIMARY_COLOR, SECONDARY_COLOR, type RawColor } from "../core/color";
+import { NEUTRAL_COLOR, PRIMARY_COLOR, SECONDARY_COLOR, type RawColor } from "../core/color";
 import { LogLevel, setLogLevel, type LogLevelValue } from "../logging/logger";
 
 const STORE = DbStores.settings;
@@ -28,6 +28,7 @@ export interface UISettings {
     handlesSize: number;
     handlesSelectedColor: RawColor;
     handlesUnselectedColor: RawColor;
+    renderingBackgroundColor: RawColor;
     geometryEditorSensitivity: number;
 }
 
@@ -39,14 +40,15 @@ const DEFAULT_VIDEO_SETTINGS: VideoSettings = {};
 const DEFAULT_INPUTS_SETTINGS: InputsSettings = {};
 const DEFAULT_OUTPUTS_SETTINGS: OutputsSettings = {};
 const DEFAULT_UI_SETTINGS: UISettings = {
-    selectionColor: [...SECONDARY_COLOR as RawColor],
+    selectionColor: [...SECONDARY_COLOR],
     selectionOverlayOpacity: 0.35,
     selectionOutlineThickness: 1,
     arrowTranslationSpeed: 10,
     vertexSelectionThreshold: 10,
     handlesSize: 10,
     handlesSelectedColor: [1, 1, 1, 1],
-    handlesUnselectedColor: [...SECONDARY_COLOR as RawColor],
+    handlesUnselectedColor: [...SECONDARY_COLOR],
+    renderingBackgroundColor: [...NEUTRAL_COLOR],
     geometryEditorSensitivity: 1.0,
 };
 
