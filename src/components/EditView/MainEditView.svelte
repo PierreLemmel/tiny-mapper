@@ -5,7 +5,7 @@
     import { MainRenderer } from "../../lib/rendering/main-renderer";
     import { renderingUI, surfaceUI, type SurfaceUIData } from "../../lib/stores/user-interface";
     import { cn, remap } from "../../lib/core/utils";
-    import { mainRendering } from "../../lib/stores/rendering";
+    import { mainCamera, mainRaycaster, mainRenderer, mainRendering, mainScene } from "../../lib/stores/rendering";
     import { application } from "../../lib/stores/application";
     import { dragOrClick, type DistinctEvent } from "../../lib/ui/actions/dragOrClick";
     import { MainRaycaster } from "../../lib/rendering/main-raycaster";
@@ -22,18 +22,14 @@
     import { get } from "svelte/store";
     import type { SurfaceGeometryVertexChangedEventData, SurfacesTranslatedEventData } from "../../lib/events/surfaces/surfaces-event-types";
     import { eventStore } from "../../lib/events/event-store";
+    import { log } from "../../lib/logging/logger";
 
     let container: HTMLDivElement;
     let canvas: HTMLCanvasElement;
 
-    
-    let rafId: number;
-    let resizeObserver: ResizeObserver;
+    let renderingItemId: string;
 
-    const scene: MainScene = MainScene.instance();
-    let camera: MainCamera|null = null;
-    let renderer: MainRenderer|null = null;
-    let raycaster: MainRaycaster|null = null;
+    let resizeObserver: ResizeObserver;
 
     let canvasWidth = 1;
     let canvasHeight = 1;
@@ -41,8 +37,6 @@
     function resize(width: number, height: number) {
         canvasWidth = width;
         canvasHeight = height;
-        camera?.resize(width, height);
-        renderer?.resize(width, height);
     }
 
     let fps: number = 0;
@@ -50,26 +44,24 @@
     let timeBetweenFrames: number = 0;
     let geometryCount: number = 0;
     let textureCount: number = 0;
+    let scissorsCount: number = 0;
 
     let isDragging = false;
 
 
     function handleClick(e: DistinctEvent) {
-
-        if (!camera || !raycaster) return;
+        if (!$mainCamera || !$mainRaycaster || !$mainRenderer) return;
 
         const {
             ctrlKey,
             shiftKey,
             metaKey,
-            x,
-            y,
+            clientX,
+            clientY,
         } = e;
 
-        const ndcX = remap(x, 0, canvasWidth, -1, 1);
-        const ndcY = remap(y, 0, canvasHeight, 1, -1);
-
-        const intersects = raycaster.castRay(ndcX, ndcY);
+        const [ndcX, ndcY] = $mainRenderer.getNDCCoordinates(clientX, clientY);
+        const intersects = $mainRaycaster.castRay(ndcX, ndcY);
         const modifiers: SelectSurfaceModifiers = { ctrlKey, shiftKey, metaKey };
         
         switch (intersects.type) {
@@ -118,11 +110,10 @@
     let dragTranslationType: TranslationType = "None";
 
     function handleDragStart(e: DistinctEvent) {
-        if (!camera || !raycaster) return;
+        if (!$mainCamera || !$mainRaycaster || !$mainRenderer) return;
 
-        const ndcX = remap(e.x, 0, canvasWidth, -1, 1);
-        const ndcY = remap(e.y, 0, canvasHeight, 1, -1);
-        const rcResult = raycaster.castRay(ndcX, ndcY);
+        const [ndcX, ndcY] = $mainRenderer.getNDCCoordinates(e.clientX, e.clientY);
+        const rcResult = $mainRaycaster.castRay(ndcX, ndcY);
 
         const modifiers: SelectSurfaceModifiers = {
             ctrlKey: e.ctrlKey,
@@ -417,11 +408,6 @@
         
         const { width, height } = container.getBoundingClientRect();
 
-        camera = new MainCamera(width, height);
-        renderer = new MainRenderer(canvas);
-        raycaster = new MainRaycaster(camera, scene);
-
-        renderer.initialize();
         resize(width, height);
 
         function onWheel(e: WheelEvent) {
@@ -447,28 +433,16 @@
         canvas.addEventListener("wheel", onWheel, { passive: false });
 
         setInterval(() => {
-            if (!renderer) return;
+            if (!$mainRenderer) return;
 
-            fps = renderer.fps;
-            renderingTime = renderer.renderingTime;
-            timeBetweenFrames = renderer.timeBetweenFrames;
-            geometryCount = renderer.geometryCount;
-            textureCount = renderer.textureCount;
+            fps = $mainRenderer.fps;
+            renderingTime = $mainRenderer.renderingTime;
+            timeBetweenFrames = $mainRenderer.timeBetweenFrames;
+            geometryCount = $mainRenderer.geometryCount;
+            textureCount = $mainRenderer.textureCount;
+            scissorsCount = $mainRenderer.scissorsCount;
         }, 200);
-        
-        function loop() {
-            rafId = requestAnimationFrame(loop);
 
-            if (!renderer || !camera || !scene) return;
-
-            renderer.renderMainscene(camera, scene, {
-                x: 0,
-                y: 0,
-                width: canvasWidth,
-                height: canvasHeight,
-            });
-        }
-        loop();
 
         registerMainEditViewHandlers();
 
@@ -481,23 +455,22 @@
 
         mounted = true;
 
+        if (!$mainRenderer || !$mainCamera || !$mainScene) {
+            log.error("MainRenderer, MainCamera or MainScene not initialized");
+            return;
+        };
+        renderingItemId = $mainRenderer.addItemToRendering($mainCamera.camera, $mainScene.content, canvas);
+
         return () => {
             canvas.removeEventListener("wheel", onWheel);
             unregisterMainEditViewHandlers();
             
             unregisters.forEach(unregister => unregister());
 
-            cancelAnimationFrame(rafId);
             resizeObserver?.disconnect();
-
-            camera?.dispose();
-            renderer?.dispose();
+            $mainRenderer?.removeItemFromRendering(renderingItemId);
         };
     });
-
-    $: if ($application.loaded) {
-        scene.initializeSceneIfNeeded();
-    }
 
 </script>
 
@@ -541,6 +514,9 @@
 
             <div class="justify-self-start">Texture:</div>
             <div class="justify-self-end">{textureCount}</div>
+
+            <div class="justify-self-start">Scissors count:</div>
+            <div class="justify-self-end">{scissorsCount}</div>
         </div>
     {/if}
 

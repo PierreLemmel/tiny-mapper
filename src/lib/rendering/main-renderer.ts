@@ -4,14 +4,26 @@ import type { MainCamera } from "./main-camera";
 
 import { log } from "../logging/logger";
 import type { Rect } from "../logic/mapping";
+import { createId, remap } from "../core/utils";
 
 const FPS_SAMPLE_COUNT = 10;
 
+type RenderingItem = {
+    scene: THREE.Scene;
+    camera: THREE.Camera;
+    target: HTMLElement;
+}
+
 export class MainRenderer {
     private renderer: THREE.WebGLRenderer;
+    private canvas: HTMLCanvasElement;
 
     public get geometryCount(): number {
         return this.renderer.info.memory.geometries;
+    }
+
+    public get scissorsCount(): number {
+        return this._renderingItems.size;
     }
 
     public get textureCount(): number {
@@ -37,7 +49,7 @@ export class MainRenderer {
     }
 
     public constructor(canvas: HTMLCanvasElement) {
-
+        this.canvas = canvas;
         this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         this.renderer.setScissorTest(true);
     }
@@ -51,22 +63,90 @@ export class MainRenderer {
         this.initialized = true;
     }
 
-    public renderMainscene(camera: MainCamera, scene: MainScene, rect: Rect) {
-        const startTime = performance.now();
+    private _renderingItems: Map<string, RenderingItem> = new Map();
+
+    public addItemToRendering(camera: THREE.Camera, scene: THREE.Scene, target: HTMLElement) {
+        const id = createId();
+        this._renderingItems.set(id, { camera, scene, target });
+        return id;
+    }
+
+    public removeItemFromRendering(id: string) {
+        this._renderingItems.delete(id);
+    }
+
+    public performRenderings() {
 
         if (!this.initialized) {
             log.error("Renderer not initialized, called initialize first");
             return;
         }
 
-        this.renderer.setScissor(rect.x, rect.y, rect.width, rect.height);
-        this.renderer.render(scene.content, camera.camera);
+        const startTime = performance.now();
+
         const endTime = performance.now();
 
+        const viewport = new THREE.Vector4();
+        this.renderer.getViewport(viewport);
+
+        const canvasRect = this.canvas.getBoundingClientRect();
+        for (const item of this._renderingItems.values()) {
+            this.renderItem(item, canvasRect);
+        }
         this._renderingTime = (this._renderingTime * (FPS_SAMPLE_COUNT - 1) + (endTime - startTime)) / FPS_SAMPLE_COUNT;
 
         this._timeBetweenFrames = (this._timeBetweenFrames * (FPS_SAMPLE_COUNT - 1) + (endTime - this._lastTime)) / FPS_SAMPLE_COUNT;
         this._lastTime = endTime;
+    }
+
+    private renderItem(item: RenderingItem, canvasRect: DOMRect) {
+        const {
+            height: canvasHeight,
+            top: canvasTop,
+            left: canvasLeft,
+            bottom: canvasBottom,
+            right: canvasRight,
+        } = canvasRect;
+
+        const {
+            top: targetTop,
+            left: targetLeft,
+            bottom: targetBottom,
+            right: targetRight,
+        } = item.target.getBoundingClientRect();
+
+        if (
+            targetRight < canvasLeft ||
+            targetLeft > canvasRight ||
+            targetBottom < canvasTop ||
+            targetTop > canvasBottom
+        ) {
+            return;
+        }
+
+        const scissorX = targetLeft - canvasLeft;
+        const scissorY = canvasHeight - (targetBottom - canvasTop);
+        const scissorWidth = targetRight - targetLeft;
+        const scissorHeight = targetBottom - targetTop;
+
+        this.renderer.setScissor(scissorX, scissorY, scissorWidth, scissorHeight);
+        this.renderer.render(item.scene, item.camera);
+    }
+
+    public getNDCCoordinates(clientX: number, clientY: number): [number, number] {
+        const {
+            height: canvasHeight,
+            top: canvasTop,
+            left: canvasLeft,
+            bottom: canvasBottom,
+            right: canvasRight,
+        } = this.canvas.getBoundingClientRect();
+
+        const ndcX = remap(clientX, canvasLeft, canvasRight, -1, 1);
+        const ndcY = remap(clientY, canvasTop, canvasBottom, 1, -1);
+        console.log(clientX, clientY);
+        console.log(ndcX, ndcY);
+        return [ndcX, ndcY];
     }
 
     public dispose() {

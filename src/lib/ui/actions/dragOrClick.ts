@@ -3,6 +3,8 @@ import type { ActionReturn } from "svelte/action";
 export interface DistinctEvent {
     x: number;
     y: number;
+    clientX: number;
+    clientY: number;
 
     pressX: number;
     pressY: number;
@@ -36,9 +38,12 @@ export function dragOrClick(node: HTMLElement): ActionReturn<undefined, CustomAt
 
         const x = e.offsetX;
         const y = e.offsetY;
+
         return {
             x,
             y,
+            clientX: e.clientX,
+            clientY: e.clientY,
             pressX: startX,
             pressY: startY,
             deltaX: x - startX,

@@ -90,4 +90,9 @@ export class MainRaycaster {
             surfaceType,
         };
     }
+
+
+    public dispose() {
+        
+    }
 }

@@ -2,6 +2,11 @@
     import { onMount } from "svelte";
     import { cn } from "../../lib/core/utils";
     import { MainRenderer } from "../../lib/rendering/main-renderer";
+    import { mainCamera, mainRaycaster, mainRenderer, mainScene } from "../../lib/stores/rendering";
+    import { MainCamera } from "../../lib/rendering/main-camera";
+    import { MainScene } from "../../lib/rendering/main-scene";
+    import { application } from "../../lib/stores/application";
+    import { MainRaycaster } from "../../lib/rendering/main-raycaster";
 
     export let className: string|undefined = undefined;
 
@@ -9,16 +14,11 @@
     let canvas: HTMLCanvasElement;
     let rafId: number;
 
-    let renderer: MainRenderer|null = null;
-
     function resize(width: number, height: number) {
-        // canvasWidth = width;
-        // canvasHeight = height;
-        // camera?.resize(width, height);
-        renderer?.resize(width, height);
+        $mainCamera?.resize(width, height);
+        $mainRenderer?.resize(width, height);
     }
 
-    let mounted = false;
     onMount(() => {
 
         const resizeObserver = new ResizeObserver((entries) => {
@@ -30,25 +30,46 @@
         });
         resizeObserver.observe(container);
 
-        renderer = new MainRenderer(canvas);
+        const { width, height } = container.getBoundingClientRect();
 
-        function renderLoop() {
-            rafId = requestAnimationFrame(renderLoop);
+        $mainCamera = new MainCamera(width, height);
+        $mainScene = MainScene.instance();
+
+        $mainRenderer = new MainRenderer(canvas);
+        $mainRenderer.initialize();
+
+        $mainRaycaster = new MainRaycaster($mainCamera, $mainScene);
+        function loop() {
+            rafId = requestAnimationFrame(loop);
+            if (!$mainRenderer || !$mainCamera || !$mainScene) return;
+            $mainRenderer.performRenderings();
         }
-        rafId = requestAnimationFrame(renderLoop);
 
-        mounted = true;
-
+        loop();
         return () => {
-            cancelAnimationFrame(rafId);
+            $mainCamera?.dispose();
             resizeObserver.disconnect();
+
+            $mainScene?.dispose();
+            $mainCamera?.dispose();
+            $mainRenderer?.dispose();
+            $mainRaycaster?.dispose();
+            
+            $mainScene = null;
+            $mainCamera = null;
+            $mainRenderer = null;
+            $mainRaycaster = null;
         }
     });
+
+    $: if ($application.loaded) {
+        $mainScene?.initializeSceneIfNeeded();
+    }
 
 </script>
 
 <div bind:this={container} class={cn(
-    "panel flex flex-col w-full h-full min-w-0 min-h-0 relative",
+    "panel flex flex-col w-full h-full min-w-0 min-h-0 relative pointer-events-none",
     className
 )}>
     <canvas bind:this={canvas} class="absolute inset-0 w-full h-full focus:outline-none focus-visible:outline-none"></canvas>
