@@ -21,10 +21,11 @@
     } from "./surface-tree";
     import { FLIP_DURATION_MS, SURFACES_DND_TARGET_CLASSES, SURFACES_DND_TARGET_STYLE, SURFACES_DND_TYPE } from '../../../lib/ui/animations';
     import ChevronIcon from '../../../icons/ChevronIcon.svelte';
-    import { surfaceStore } from '../../../lib/stores/surfaces';
+    import { surfaceStore, surfaces } from '../../../lib/stores/surfaces';
     import { selectSurface } from '../../../lib/logic/surfaces/surface-selection';
     import { inputContext } from '../../../lib/ui/actions/inputContext';
     import { InputContexts } from '../../../lib/ui/inputs/input-contexts';
+    import type { GroupSurface } from '../../../lib/logic/surfaces/surfaces';
 
     export let item: SurfaceDisplayTreeItem;
     export let indent: number = 0;
@@ -57,8 +58,42 @@
     let childItems: SurfaceDisplayTreeItem[] = [];
     let isChildDragging = false;
 
+    function childMatchesFilter(cid: string, tagFilter: string | null, searchQuery: string): boolean {
+        const cs = $surfaces[cid];
+        if (!cs) return true;
+
+        if (tagFilter !== null) {
+            if (!cs.tags || !cs.tags.includes(tagFilter)) {
+                if (cs.type === "Group") {
+                    return (cs as GroupSurface)
+                        .children.some(gcid => childMatchesFilter(gcid, tagFilter, searchQuery));
+                }
+                return false;
+            }
+        }
+
+        if (searchQuery.length > 0) {
+            const query = searchQuery.toLowerCase();
+            const nameMatch = cs.name.toLowerCase().includes(query);
+            const tagMatch = cs.tags?.some(t => t.toLowerCase().includes(query)) ?? false;
+            if (!nameMatch && !tagMatch) {
+                if (cs.type === "Group") {
+                    return (cs as GroupSurface)
+                        .children.some(gcid => childMatchesFilter(gcid, null, searchQuery));
+                }
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     $: if (!isChildDragging && type === "Group" && $surface.type === "Group") {
-        childItems = $surface.children.map((cid: string) => ({ id: cid }));
+        const tagFilter = $surfaceUI.tagFilter;
+        const searchQuery = $surfaceUI.searchQuery;
+        childItems = $surface.children
+            .filter((cid: string) => childMatchesFilter(cid, tagFilter, searchQuery))
+            .map((cid: string) => ({ id: cid }));
     }
 
     function handleChildConsider(e: CustomEvent<DndEvent<SurfaceDisplayTreeItem>>) {

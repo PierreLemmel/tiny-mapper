@@ -18,8 +18,9 @@
     import ScaleEditor from "../../Shared/ScaleEditor.svelte";
     import type { Writable } from "svelte/store";
     import GeometryEditor from "../../Shared/GeometryEditor.svelte";
-    import { surfaceGeometryStore } from "../../../lib/stores/surfaces";
+    import { surfaceGeometryStore, surfaces } from "../../../lib/stores/surfaces";
     import MaterialSelector from "../../Shared/MaterialSelector.svelte";
+    import TagSelector from "../../Shared/TagSelector.svelte";
 
     export let className: string|undefined = undefined;
 
@@ -32,6 +33,18 @@
     );
 
     const separatorClasses = "my-0";
+
+    $: allTags = (() => {
+        const tags = new Set<string>();
+        for (const s of Object.values($surfaces)) {
+            if (s.tags) {
+                for (const tag of s.tags) {
+                    tags.add(tag);
+                }
+            }
+        }
+        return Array.from(tags).sort();
+    })();
 </script>
 
 <div class={cn(
@@ -213,4 +226,20 @@
         </div>
     </Foldable>
     {/if}
+
+    <HorizontalSeparator className={separatorClasses} />
+    <Foldable title="Tags" bind:open={$surfaceUI.tags.open}>
+        <TagSelector
+            tags={$surface.tags ?? []}
+            availableTags={allTags}
+            onChange={(oldTags, newTags) => {
+                $surface.tags = newTags;
+                eventStore.push({
+                    category: "Surface", type: "TagsChanged",
+                    forwardData: { surfaceId: $surface.id, tags: newTags },
+                    backwardData: { surfaceId: $surface.id, tags: oldTags },
+                });
+            }}
+    />
+    </Foldable>
 </div>

@@ -139,6 +139,12 @@ export function registerSurfacesEventHandlers() {
         (data) => applySurfaceProperty(data)
     );
 
+    registerSurfacePropertyHandler(
+        "tags",
+        (data) => applySurfaceProperty(data),
+        (data) => applySurfaceProperty(data)
+    );
+
     
     registerSurfaceTransformPropertyHandler(
         "position",

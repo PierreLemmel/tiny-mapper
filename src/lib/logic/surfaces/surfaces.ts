@@ -40,6 +40,7 @@ export type SurfaceBase = {
     blendMode: BlendMode;
     feathering: number;
     transform: SurfaceTransform;
+    tags?: string[];
 }
 
 export type SurfaceType = "Group"|"Quad"|"Root"

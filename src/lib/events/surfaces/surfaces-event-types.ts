@@ -32,6 +32,7 @@ export type SurfaceBlendModeChanged = SurfacePropertyEvent<"blendMode">;
 export type SurfaceColorChanged = SurfacePropertyEvent<"color">;
 export type SurfaceFlipChanged = SurfacePropertyEvent<"flip">;
 export type SurfaceFeatheringChanged = SurfacePropertyEvent<"feathering">;
+export type SurfaceTagsChanged = SurfacePropertyEvent<"tags">;
 
 export type SurfaceCreated = AppEvent<"Surface", "Created", {
     surface: Surface,

@@ -5,9 +5,14 @@ import { addMaterialTemplateToStores, deleteMaterialTemplateStore } from "../../
 
 export type MaterialTemplateType = "SurfaceMaterial";
 
+
 export type MaterialTemplate = {
     id: string;
     name: string;
+    description: string;
+    author: string;
+    version: "2.0";
+    tags?: string[];
     type: MaterialTemplateType;
     vertexShader: string;
     vertexShaderEditValue: string;
@@ -28,6 +33,10 @@ export function createDefaultMaterialTemplate(): MaterialTemplate {
     return {
         id: DEFAULT_MATERIAL_TEMPLATE_ID,
         name: "Default",
+        description: "Default material template",
+        author: "Default",
+        version: "2.0",
+        tags: [],
         type: "SurfaceMaterial",
         vertexShader: DEFAULT_VERTEX_SHADER,
         vertexShaderEditValue: DEFAULT_VERTEX_SHADER,
@@ -42,17 +51,8 @@ export function createDefaultMaterialTemplate(): MaterialTemplate {
 
 export function createMaterialTemplate(values: Partial<Omit<MaterialTemplate, "type">> = {}): MaterialTemplate {
     const template: MaterialTemplate = {
+        ...createDefaultMaterialTemplate(),
         id: createId(),
-        name: values.name ?? "New Template",
-        type: "SurfaceMaterial",
-        vertexShader: DEFAULT_VERTEX_SHADER,
-        vertexShaderEditValue: DEFAULT_VERTEX_SHADER,
-        vertexShaderErrors: null,
-        fragmentShader: DEFAULT_FRAGMENT_SHADER,
-        fragmentShaderEditValue: DEFAULT_FRAGMENT_SHADER,
-        fragmentShaderErrors: null,
-        hidden: false,
-        hasErrors: false,
         ...values,
     };
     addMaterialTemplateToStores(template.id, template);

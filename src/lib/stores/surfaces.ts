@@ -69,3 +69,16 @@ export const surfaces = readonly(surfacesInternal);
 export function getAllSurfaces(): Surface[] {
     return Array.from(surfaceStores.values()).map(store => get(store));
 }
+
+export function getAllTags(): string[] {
+    const tags = new Set<string>();
+    for (const store of surfaceStores.values()) {
+        const surface = get(store);
+        if (surface.tags) {
+            for (const tag of surface.tags) {
+                tags.add(tag);
+            }
+        }
+    }
+    return Array.from(tags).sort();
+}
