@@ -1,0 +1,17 @@
+<script lang="ts">
+    import { cn } from "../lib/core/utils";
+
+    export let className: string | undefined = undefined;
+</script>
+
+<svg
+    class={cn("stroke-current", className)}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+>
+    <line x1="5" y1="12" x2="19" y2="12" />
+</svg>

@@ -15,6 +15,7 @@ type RenderingItem = {
     scene: THREE.Scene;
     camera: THREE.Camera;
     target: HTMLElement;
+    matchViewPortToArea: boolean;
 }
 
 export class MainRenderer {
@@ -31,6 +32,10 @@ export class MainRenderer {
 
     public get textureCount(): number {
         return this.renderer.info.memory.textures;
+    }
+
+    public get threeRenderer(): THREE.WebGLRenderer {
+        return this.renderer;
     }
 
     private _lastTime = 0;
@@ -68,9 +73,9 @@ export class MainRenderer {
 
     private _renderingItems: Map<string, RenderingItem> = new Map();
 
-    public addItemToRendering(camera: THREE.Camera, scene: THREE.Scene, target: HTMLElement) {
+    public addItemToRendering(camera: THREE.Camera, scene: THREE.Scene, target: HTMLElement, matchViewPortToArea: boolean) {
         const id = createId();
-        this._renderingItems.set(id, { camera, scene, target });
+        this._renderingItems.set(id, { camera, scene, target, matchViewPortToArea });
         return id;
     }
 
@@ -107,6 +112,7 @@ export class MainRenderer {
     private renderItem(item: RenderingItem, canvasRect: DOMRect) {
         const {
             height: canvasHeight,
+            width: canvasWidth,
             top: canvasTop,
             left: canvasLeft,
             bottom: canvasBottom,
@@ -114,11 +120,18 @@ export class MainRenderer {
         } = canvasRect;
 
         const {
+            target,
+            scene,
+            camera,
+            matchViewPortToArea,
+        } = item;
+
+        const {
             top: targetTop,
             left: targetLeft,
             bottom: targetBottom,
             right: targetRight,
-        } = item.target.getBoundingClientRect();
+        } = target.getBoundingClientRect();
 
         if (
             targetRight < canvasLeft ||
@@ -134,8 +147,14 @@ export class MainRenderer {
         const scissorWidth = targetRight - targetLeft;
         const scissorHeight = targetBottom - targetTop;
 
+        if (matchViewPortToArea) {
+            this.renderer.setViewport(scissorX, scissorY, scissorWidth, scissorHeight);
+        } else {
+            this.renderer.setViewport(0, 0, canvasWidth, canvasHeight);
+        }
+        
         this.renderer.setScissor(scissorX, scissorY, scissorWidth, scissorHeight);
-        this.renderer.render(item.scene, item.camera);
+        this.renderer.render(scene, camera);
     }
 
     public getNDCCoordinates(clientX: number, clientY: number): [number, number] {

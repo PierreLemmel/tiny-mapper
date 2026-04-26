@@ -1,4 +1,7 @@
 <script lang="ts">
+    import EditIcon from "../../../icons/EditIcon.svelte";
+    import ExclamationIcon from "../../../icons/ExclamationIcon.svelte";
+    import ModifiedIcon from "../../../icons/ModifiedIcon.svelte";
     import { cn } from "../../../lib/core/utils";
     import { eventStore } from "../../../lib/events/event-store";
     import { materialTemplateStore } from "../../../lib/stores/material-templates";
@@ -12,7 +15,7 @@
     export let onDelete: (id: string) => void;
 
     $: active = $libraryUI.shaders.selectedTemplateId === templateId;
-
+    $: modified = $template !== undefined && ($template.vertexShaderEditValue !== $template.vertexShader || $template.fragmentShaderEditValue !== $template.fragmentShader);
 
     $: template = materialTemplateStore(templateId);
 </script>
@@ -29,20 +32,24 @@
     role="button"
     tabindex="0"
 >
-    <ShaderThumbnail name={$template.name} className="size-10 rounded-md" />
+    <ShaderThumbnail name={$template.name} {templateId} className="size-10 rounded-md" selected={active} />
     <div class="flex flex-col gap-0.5 min-w-0 flex-1">
-        <NameDisplay
-            className={active ? "text-neutral-100" : "text-neutral-300"}
-            bind:value={$template.name}
-            onCommit={(oldVal, newVal) => {
-                eventStore.push({
-                    category: "MaterialTemplate",
-                    type: "NameChanged",
-                    forwardData: { templateId, name: newVal },
-                    backwardData: { templateId, name: oldVal },
-                });
-            }}
-        />
+        <div class="flex flex-row items-center justify-between">
+            <NameDisplay
+                className={$template.hasErrors ?
+                    (active ? "text-red-300" : "text-red-400") :
+                    (active ? "text-neutral-100" : "text-neutral-300")}
+                bind:value={$template.name}
+                onCommit={(oldVal, newVal) => {
+                    eventStore.push({
+                        category: "MaterialTemplate",
+                        type: "NameChanged",
+                        forwardData: { templateId, name: newVal },
+                        backwardData: { templateId, name: oldVal },
+                    });
+                }}
+            />
+        </div>
         <span class={cn(
             "text-[0.6rem] uppercase tracking-wider pl-1.5",
             active ? "text-neutral-300" : "text-neutral-400"
@@ -50,6 +57,21 @@
             {$template.type === "SurfaceMaterial" ? "Surface" : $template.type}
         </span>
     </div>
+    {#if $template.hasErrors}   
+        <div class="flex flex-row items-center justify-center mr-2">
+            <ExclamationIcon className={cn(
+                "size-7",
+                active ? "text-red-300" : "text-red-400"
+            )} />
+        </div>
+    {:else if modified}
+        <div class="flex flex-row items-center justify-center mr-2">
+            <ModifiedIcon className={cn(
+                "size-6",
+                active ? "text-neutral-300" : "text-neutral-400"
+            )} />
+        </div>
+    {/if}
     <button
         type="button"
         class={cn(

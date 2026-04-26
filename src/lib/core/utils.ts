@@ -41,3 +41,7 @@ export function isWithinArray(array: any[], index: number): boolean {
 export function remap(value: number, min: number, max: number, newMin: number, newMax: number): number {
     return newMin + (value - min) * (newMax - newMin) / (max - min);
 }
+
+export function delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

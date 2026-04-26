@@ -1,5 +1,5 @@
 import { eventStore } from "../event-store";
-import type { MaterialTemplate } from "../../logic/material-templates/material-templates";
+import { createMaterialTemplate, deleteMaterialTemplate, restoreMaterialTemplate, type MaterialTemplate } from "../../logic/material-templates/material-templates";
 import {
     addMaterialTemplateToStores,
     deleteMaterialTemplateStore,
@@ -61,10 +61,8 @@ export function registerMaterialTemplatesEventHandlers() {
     eventStore.registerHandler<MaterialTemplateCreated>(
         "MaterialTemplate",
         "Created",
-        (data) => addMaterialTemplateToStores(data.template.id, data.template),
-        (data) => {
-            deleteMaterialTemplateStore(data.templateId);
-        }
+        (data) => createMaterialTemplate(structuredClone(data.template)),
+        (data) => deleteMaterialTemplate(data.templateId)
     );
 
     eventStore.registerHandler<MaterialTemplateDeleted>(
@@ -72,12 +70,12 @@ export function registerMaterialTemplatesEventHandlers() {
         "Deleted",
         (data) => {
             for (const id of data.templateIds) {
-                deleteMaterialTemplateStore(id);
+                deleteMaterialTemplate(id);
             }
         },
         (data) => {
             for (const template of data.deletedTemplates.slice().reverse()) {
-                addMaterialTemplateToStores(template.id, template);
+                restoreMaterialTemplate(template);
             }
         }
     );

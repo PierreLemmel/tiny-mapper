@@ -6,6 +6,7 @@ import type { MainCamera } from "../rendering/main-camera";
 import type { MainScene } from "../rendering/main-scene";
 import type { MainRenderer } from "../rendering/main-renderer";
 import type { MainRaycaster } from "../rendering/main-raycaster";
+import type { CompilationScene } from "../rendering/compilation-scene";
 
 const STORE_RENDERING = DbStores.ui;
 
@@ -25,6 +26,7 @@ export const mainCamera = writable<MainCamera|null>(null);
 export const mainScene = writable<MainScene|null>(null);
 export const mainRenderer = writable<MainRenderer|null>(null);
 export const mainRaycaster = writable<MainRaycaster|null>(null);
+export const compilationScene = writable<CompilationScene|null>(null);
 
 export const mainRendering = writable<MainRendering>(DEFAULT_MAIN_RENDERING)
 

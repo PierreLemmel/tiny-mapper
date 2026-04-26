@@ -88,6 +88,8 @@ export type LibraryUIData = {
         selectedTemplateId: string | null
         activeShaderTab: 0 | 1
         leftPanelSize: number
+        errorsPanelSize: number
+        previewCollapsed: boolean
     }
 }
 
@@ -158,6 +160,8 @@ const DEFAULT_LIBRARY_UI_DATA: LibraryUIData = {
         selectedTemplateId: null,
         activeShaderTab: 0,
         leftPanelSize: 300,
+        errorsPanelSize: 100,
+        previewCollapsed: false,
     },
 }
 

@@ -459,7 +459,7 @@
             log.error("MainRenderer, MainCamera or MainScene not initialized");
             return;
         };
-        renderingItemId = $mainRenderer.addItemToRendering($mainCamera.camera, $mainScene.content, canvas);
+        renderingItemId = $mainRenderer.addItemToRendering($mainCamera.camera, $mainScene.content, canvas, false);
 
         return () => {
             canvas.removeEventListener("wheel", onWheel);

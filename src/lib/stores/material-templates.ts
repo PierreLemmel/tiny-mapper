@@ -54,7 +54,3 @@ export async function initMaterialTemplatesStores() {
 
 const templatesInternal = writable<{ [id: string]: MaterialTemplate }>({});
 export const materialTemplates = readonly(templatesInternal);
-
-export function getAllMaterialTemplates(): MaterialTemplate[] {
-    return Array.from(templateStores.values()).map(store => get(store));
-}

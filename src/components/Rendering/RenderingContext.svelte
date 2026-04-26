@@ -2,11 +2,12 @@
     import { onMount } from "svelte";
     import { cn } from "../../lib/core/utils";
     import { MainRenderer } from "../../lib/rendering/main-renderer";
-    import { mainCamera, mainRaycaster, mainRenderer, mainScene } from "../../lib/stores/rendering";
+    import { compilationScene, mainCamera, mainRaycaster, mainRenderer, mainScene } from "../../lib/stores/rendering";
     import { MainCamera } from "../../lib/rendering/main-camera";
     import { MainScene } from "../../lib/rendering/main-scene";
     import { application } from "../../lib/stores/application";
     import { MainRaycaster } from "../../lib/rendering/main-raycaster";
+    import { CompilationScene } from "../../lib/rendering/compilation-scene";
 
     export let className: string|undefined = undefined;
 
@@ -38,6 +39,9 @@
         $mainRenderer = new MainRenderer(canvas);
         $mainRenderer.initialize();
 
+        $compilationScene = new CompilationScene();
+        $compilationScene.initialize();
+
         $mainRaycaster = new MainRaycaster($mainCamera, $mainScene);
         function loop() {
             rafId = requestAnimationFrame(loop);
@@ -54,11 +58,13 @@
             $mainCamera?.dispose();
             $mainRenderer?.dispose();
             $mainRaycaster?.dispose();
-            
+            $compilationScene?.dispose();
+
             $mainScene = null;
             $mainCamera = null;
             $mainRenderer = null;
             $mainRaycaster = null;
+            $compilationScene = null;
         }
     });
 
@@ -70,6 +76,7 @@
 
 <div bind:this={container} class={cn(
     "panel flex flex-col w-full h-full min-w-0 min-h-0 relative pointer-events-none",
+    "z-100",
     className
 )}>
     <canvas bind:this={canvas} class="absolute inset-0 w-full h-full focus:outline-none focus-visible:outline-none"></canvas>

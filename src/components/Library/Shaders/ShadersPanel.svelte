@@ -1,34 +1,24 @@
 <script lang="ts">
     import { get } from "svelte/store";
-    import { cn } from "../../../lib/core/utils";
     import {
         materialTemplates,
-        addMaterialTemplateToStores,
-        deleteMaterialTemplateStore,
         materialTemplateStore,
     } from "../../../lib/stores/material-templates";
-    import { createMaterialTemplate, type MaterialTemplate } from "../../../lib/logic/material-templates/material-templates";
+    import { createMaterialTemplate, deleteMaterialTemplate } from "../../../lib/logic/material-templates/material-templates";
     import { eventStore } from "../../../lib/events/event-store";
     import type { MaterialTemplateCreated, MaterialTemplateDeleted } from "../../../lib/events/material-templates/material-templates-event-types";
     import IconButton from "../../Shared/IconButton.svelte";
     import PlusIcon from "../../../icons/PlusIcon.svelte";
-    import CodeEditor from "../../Shared/CodeEditor.svelte";
-    import ShaderThumbnail from "../../Shared/ShaderThumbnail.svelte";
     import ValidationPopup from "../../Shared/ValidationPopup.svelte";
-    import NameDisplay from "../../Shared/NameDisplay.svelte";
     import { libraryUI } from "../../../lib/stores/user-interface";
     import SplitPanels from "../../Shared/SplitPanels.svelte";
-    import ShaderPreview from "./ShaderPreview.svelte";
     import ShaderListItem from "./ShaderListItem.svelte";
-    import TabPanel from "../../Shared/TabPanel.svelte";
-    import Button from "../../Shared/Button.svelte";
-    import PlayIcon from "../../../icons/PlayIcon.svelte";
+    import ShaderEditor from "./ShaderEditor.svelte";
 
     export let className: string | undefined = undefined;
     
     let deleteValidationOpen = false;
     let pendingDeleteId: string | null = null;
-    let nameCommitStart = "";
 
     $: pendingDeleteTemplate = pendingDeleteId ? $materialTemplates[pendingDeleteId] : null;
     $: deleteValidationMessage = pendingDeleteTemplate
@@ -36,7 +26,6 @@
         : "";
 
     $: visibleTemplates = Object.values($materialTemplates).filter(t => !t.hidden);
-    $: selectedTemplate = $libraryUI.shaders.selectedTemplateId ? $materialTemplates[$libraryUI.shaders.selectedTemplateId] : null;
 
     $: if ($libraryUI.shaders.selectedTemplateId != null && $materialTemplates[$libraryUI.shaders.selectedTemplateId] === undefined) {
         $libraryUI.shaders.selectedTemplateId = visibleTemplates[0]?.id ?? null;
@@ -44,7 +33,7 @@
 
     function handleCreateTemplate() {
         const template = createMaterialTemplate();
-        addMaterialTemplateToStores(template.id, template);
+        createMaterialTemplate(template);
         $libraryUI.shaders.selectedTemplateId = template.id;
         $libraryUI.shaders.activeShaderTab = 0;
 
@@ -62,7 +51,7 @@
             const others = visibleTemplates.filter(t => t.id !== id);
             $libraryUI.shaders.selectedTemplateId = others.length > 0 ? others[0].id : null;
         }
-        deleteMaterialTemplateStore(id);
+        deleteMaterialTemplate(id);
         eventStore.push<MaterialTemplateDeleted>({
             category: "MaterialTemplate",
             type: "Deleted",
@@ -89,18 +78,6 @@
 
     function selectTemplate(id: string) {
         $libraryUI.shaders.selectedTemplateId = id;
-        $libraryUI.shaders.activeShaderTab = 0;
-    }
-
-    function updateTemplate(id: string, changes: Partial<MaterialTemplate>) {
-        const store = materialTemplateStore(id);
-        if (store) {
-            store.update(t => ({ ...t, ...changes }));
-        }
-    }
-
-    function onCompile() {
-        console.log("compile");
     }
 </script>
 
@@ -136,70 +113,8 @@
     </div>
 
     <div slot="second" class="flex flex-col flex-1 min-w-0 overflow-hidden h-full">
-        {#if selectedTemplate}
-            <div class="flex flex-row items-center justify-between px-4 py-2.5 shrink-0 gap-4">
-                <NameDisplay
-                    className="text-neutral-200"
-                    bind:value={selectedTemplate.name}
-                    onCommit={(oldVal, newVal) => {
-                        eventStore.push({
-                            category: "MaterialTemplate",
-                            type: "NameChanged",
-                            forwardData: { templateId: selectedTemplate.id, name: newVal },
-                            backwardData: { templateId: selectedTemplate.id, name: oldVal },
-                        });
-                    }}
-                />
-                <Button variant="primary" onClick={onCompile}>
-                    <div class="flex flex-row items-center justify-center gap-1.5">
-                        <span class="uppercase tracking-wider text-[0.75rem] font-medium">Compile</span>
-                        <PlayIcon className="size-4 shrink-0" />
-                    </div>
-                </Button>
-
-            </div>
-            <div class="w-1/2">
-                <TabPanel
-                    tabs={["Fragment.glsl", "Vertex.glsl"]}
-                    bind:activeTab={$libraryUI.shaders.activeShaderTab}
-                    className="flex-0"
-                />
-            </div>
-            
-
-            <div class="flex-1 overflow-auto min-h-0">
-                {#if $libraryUI.shaders.activeShaderTab === 0}
-                    <CodeEditor
-                        className="h-full rounded-none"
-                        value={selectedTemplate.fragmentShader}
-                        onChange={(v) => updateTemplate(selectedTemplate.id, { fragmentShader: v })}
-                        onCommit={(oldVal, newVal) => {
-                            eventStore.push({
-                                category: "MaterialTemplate",
-                                type: "FragmentShaderChanged",
-                                forwardData: { templateId: selectedTemplate.id, fragmentShader: newVal },
-                                backwardData: { templateId: selectedTemplate.id, fragmentShader: oldVal },
-                            });
-                        }}
-                    />
-                {:else}
-                    <CodeEditor
-                        className="h-full"
-                        value={selectedTemplate.vertexShader}
-                        onChange={(v) => updateTemplate(selectedTemplate.id, { vertexShader: v })}
-                        onCommit={(oldVal, newVal) => {
-                            eventStore.push({
-                                category: "MaterialTemplate",
-                                type: "VertexShaderChanged",
-                                forwardData: { templateId: selectedTemplate.id, vertexShader: newVal },
-                                backwardData: { templateId: selectedTemplate.id, vertexShader: oldVal },
-                            });
-                        }}
-                    />
-                {/if}
-
-                <ShaderPreview className="absolute bottom-6 right-6 z-10" />
-            </div>
+        {#if $libraryUI.shaders.selectedTemplateId}
+            <ShaderEditor templateId={$libraryUI.shaders.selectedTemplateId} bind:activeShaderTab={$libraryUI.shaders.activeShaderTab} />
         {:else}
             <div class="flex flex-1 items-center justify-center">
                 <p class="text-neutral-600 text-xs text-center">Select a shader to edit</p>
