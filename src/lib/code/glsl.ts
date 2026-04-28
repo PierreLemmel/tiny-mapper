@@ -13,6 +13,8 @@ import {
 
 interface GlslState {
     inBlockComment: boolean;
+    inLineMetaComment: boolean;
+    inBlockMetaComment: boolean;
 }
 
 const isIdentStart = (ch: string) => /[A-Za-z_]/.test(ch);
@@ -44,20 +46,108 @@ function consumeNumber(stream: any): string {
     return "number";
 }
 
+function consumeQuotedString(stream: any, quote: string): void {
+    let escaped = false;
+    let c: string | null | undefined;
+    while ((c = stream.next()) != null) {
+        if (c === quote && !escaped) break;
+        escaped = !escaped && c === "\\";
+    }
+}
+
+function lineStartsWithMetaBlock(stream: any): boolean {
+    const rest = stream.string.slice(stream.pos);
+    return /^\s*\{[^{}\n]*\}\s*$/.test(rest);
+}
+
+function lineStartsBlockMetaComment(stream: any): boolean {
+    const rest = stream.string.slice(stream.pos);
+    return /^\s*\{/.test(rest);
+}
+
+function consumeMetaToken(stream: any): string | null {
+    if (stream.eatSpace()) return null;
+
+    const ch = stream.peek();
+    if (ch === '"' || ch === "'") {
+        stream.next();
+        consumeQuotedString(stream, ch);
+        return "annotation";
+    }
+
+    if (stream.match(/^[\{\}\[\]]/)) return "annotation";
+    if (stream.match(/^[,:]/)) return "annotation";
+    if (
+        stream.match(
+            /^-?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?[fFuU]?/,
+        )
+    ) {
+        return "annotation";
+    }
+    if (stream.match(/^[A-Za-z_][A-Za-z0-9_]*/)) {
+        return "annotation";
+    }
+
+    stream.next();
+    return "annotation";
+}
+
+function consumeLineMetaToken(
+    stream: any,
+    state: GlslState,
+): string | null {
+    if (stream.eatSpace()) return null;
+
+    if (stream.match("}")) {
+        state.inLineMetaComment = false;
+        return "annotation";
+    }
+    return consumeMetaToken(stream);
+}
+
+function consumeBlockMetaToken(
+    stream: any,
+    state: GlslState,
+): string | null {
+    if (stream.eatSpace()) return null;
+
+    if (stream.match("*/")) {
+        state.inBlockMetaComment = false;
+        return "annotation";
+    }
+    return consumeMetaToken(stream);
+}
+
 export const glslParser: StreamParser<GlslState> = {
     name: "glsl",
 
     startState(): GlslState {
-        return { inBlockComment: false };
+        return {
+            inBlockComment: false,
+            inLineMetaComment: false,
+            inBlockMetaComment: false,
+        };
     },
 
     copyState(state: GlslState): GlslState {
-        return { inBlockComment: state.inBlockComment };
+        return {
+            inBlockComment: state.inBlockComment,
+            inLineMetaComment: state.inLineMetaComment,
+            inBlockMetaComment: state.inBlockMetaComment,
+        };
     },
 
     token(stream, state) {
         if (state.inBlockComment) {
             return consumeBlockComment(stream, state);
+        }
+
+        if (state.inBlockMetaComment) {
+            return consumeBlockMetaToken(stream, state);
+        }
+
+        if (state.inLineMetaComment) {
+            return consumeLineMetaToken(stream, state);
         }
 
         if (stream.eatSpace()) return null;
@@ -67,11 +157,19 @@ export const glslParser: StreamParser<GlslState> = {
         }
 
         if (stream.match("//")) {
+            if (lineStartsWithMetaBlock(stream)) {
+                state.inLineMetaComment = true;
+                return "annotation";
+            }
             stream.skipToEnd();
             return "lineComment";
         }
 
         if (stream.match("/*")) {
+            if (lineStartsBlockMetaComment(stream)) {
+                state.inBlockMetaComment = true;
+                return "annotation";
+            }
             state.inBlockComment = true;
             return consumeBlockComment(stream, state);
         }
@@ -87,13 +185,7 @@ export const glslParser: StreamParser<GlslState> = {
         }
 
         if (ch === '"' || ch === "'") {
-            const quote = ch;
-            let escaped = false;
-            let c: string | null | void | undefined;
-            while ((c = stream.next()) != null) {
-                if (c === quote && !escaped) break;
-                escaped = !escaped && c === "\\";
-            }
+            consumeQuotedString(stream, ch);
             return "string";
         }
 
