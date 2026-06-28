@@ -45,3 +45,31 @@ export function remap(value: number, min: number, max: number, newMin: number, n
 export function delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+export type DuplicateGroup<T> = {
+    key: string;
+    items: T[];
+};
+
+export function findDuplicates<T>(
+    items: readonly T[],
+    getKey: (item: T) => string,
+): DuplicateGroup<T>[] {
+    const groups = new Map<string, T[]>();
+    for (const item of items) {
+        const key = getKey(item);
+        const existing = groups.get(key);
+        if (existing) {
+            existing.push(item);
+        } else {
+            groups.set(key, [item]);
+        }
+    }
+    const duplicates: DuplicateGroup<T>[] = [];
+    for (const [key, group] of groups) {
+        if (group.length > 1) {
+            duplicates.push({ key, items: group });
+        }
+    }
+    return duplicates;
+}

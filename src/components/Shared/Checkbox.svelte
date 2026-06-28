@@ -12,7 +12,7 @@
     aria-checked={checked}
     aria-disabled={disabled}
     class={cn(
-        "size-3.5 rounded-[3px] shrink-0",
+        "size-5 rounded-[3px] shrink-0",
         "border transition-all duration-150",
         "inline-flex items-center justify-center",
         "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-secondary-500",
@@ -25,7 +25,7 @@
     on:click={() => { if (!disabled) checked = !checked; }}
 >
     {#if checked}
-        <span class="inline-flex size-2.5 [&_svg]:size-full" aria-hidden="true">
+        <span class="inline-flex size-4 [&_svg]:size-full" aria-hidden="true">
             <CheckmarkIcon />
         </span>
     {/if}

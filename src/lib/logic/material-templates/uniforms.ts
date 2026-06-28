@@ -16,9 +16,11 @@ export type MaterialTemplateFloatUniform = MaterialTemplateUniformBase & {
 
 export type MaterialTemplateTimedUniform = MaterialTemplateUniformBase & {
     type: "timed";
-    timeScale: number;
-    default?: number;
+    timeScale?: number;
+    min?: number;
+    max?: number;
 }
+
 
 export type MaterialTemplatePoint2DUniform = MaterialTemplateUniformBase & {
     type: "point2D";
@@ -55,5 +57,5 @@ export type MaterialTemplateUniform = MaterialTemplateFloatUniform
     | MaterialTemplateEnumUniform;
 
 export type MaterialTemplateUniformsValues = {
-    [key: string]: any;
+    [key: string]: { value: any; };
 }

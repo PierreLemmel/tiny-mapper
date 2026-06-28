@@ -1,8 +1,7 @@
-import { createId } from "../../core/utils";
+import { clamp, clamp01, createId } from "../../core/utils";
 import defaultVertexShader from "../../../shaders/default-material-template.vert?raw";
 import defaultFragmentShader from "../../../shaders/default-material-template.frag?raw";
 import { addMaterialTemplateToStores, deleteMaterialTemplateStore } from "../../stores/material-templates";
-import type { RawColor } from "../../core/color";
 import type { MaterialTemplateUniform, MaterialTemplateUniformsValues } from "./uniforms";
 
 export type MaterialTemplateType = "SurfaceMaterial";
@@ -15,7 +14,7 @@ export type MaterialTemplate = {
     author: string;
     tags?: string[];
     uniforms: MaterialTemplateUniform[];
-    uniformsValues: MaterialTemplateUniformsValues;
+    uniformsPreviewValues: MaterialTemplateUniformsValues;
     type: MaterialTemplateType;
     vertexShader: string;
     vertexShaderEditValue: string;
@@ -41,7 +40,7 @@ export function createDefaultMaterialTemplate(): MaterialTemplate {
         author: "Default",
         tags: [],
         type: "SurfaceMaterial",
-        uniformsValues: {},
+        uniformsPreviewValues: {},
         vertexShader: DEFAULT_VERTEX_SHADER,
         vertexShaderEditValue: DEFAULT_VERTEX_SHADER,
         vertexShaderErrors: null,
@@ -62,7 +61,7 @@ export function createMaterialTemplate(values: Partial<Omit<MaterialTemplate, "t
         author: "Author",
         tags: [],
         type: "SurfaceMaterial",
-        uniformsValues: {},
+        uniformsPreviewValues: {},
         vertexShader: DEFAULT_VERTEX_SHADER,
         vertexShaderEditValue: DEFAULT_VERTEX_SHADER,
         vertexShaderErrors: null,
@@ -84,4 +83,65 @@ export function restoreMaterialTemplate(template: MaterialTemplate) {
 
 export function deleteMaterialTemplate(id: string) {
     deleteMaterialTemplateStore(id);
+}
+
+export function isValueOkForUniform(value: any, uniform: MaterialTemplateUniform): boolean {
+    switch (uniform.type) {
+        case "slider":
+        case "timed":
+            return typeof value === "number" && Number.isFinite(value);
+
+        case "point2D":
+            return (
+                Array.isArray(value) &&
+                value.length === 2 &&
+                value.every(
+                    (v) => typeof v === "number" && Number.isFinite(v),
+                )
+            );
+
+        case "color":
+            return (
+                Array.isArray(value) &&
+                value.length === 4 &&
+                value.every(
+                    (v) => typeof v === "number" && Number.isFinite(v),
+                )
+            );
+
+        case "bool":
+            return typeof value === "boolean";
+
+        case "enum":
+            return (
+                Number.isInteger(value) &&
+                uniform.options.some((o) => o.id === value)
+            );
+    }
+}
+
+export function clampValueForUniform(value: any, uniform: MaterialTemplateUniform): any {
+    switch (uniform.type) {
+        case "slider":
+            return clamp(value, uniform.min, uniform.max);
+
+        case "point2D":
+            return [
+                clamp(value[0], uniform.min[0], uniform.max[0]),
+                clamp(value[1], uniform.min[1], uniform.max[1]),
+            ] as [number, number];
+
+        case "color":
+            return [
+                clamp01(value[0]),
+                clamp01(value[1]),
+                clamp01(value[2]),
+                clamp01(value[3]),
+            ];
+
+        case "timed":
+        case "bool":
+        case "enum":
+            return value;
+    }
 }

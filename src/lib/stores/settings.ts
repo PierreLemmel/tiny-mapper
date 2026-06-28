@@ -34,6 +34,7 @@ export interface UISettings {
 
 export interface ApplicationSettings {
     logLevel: LogLevelValue;
+    refreshRate: number;
 }
 
 const DEFAULT_VIDEO_SETTINGS: VideoSettings = {};
@@ -54,6 +55,7 @@ const DEFAULT_UI_SETTINGS: UISettings = {
 
 const DEFAULT_APPLICATION_SETTINGS: ApplicationSettings = {
     logLevel: LogLevel.Debug,
+    refreshRate: 60,
 };
 
 export const videoSettings = writable<VideoSettings>(DEFAULT_VIDEO_SETTINGS);
@@ -78,4 +80,24 @@ export async function initSettingsStores() {
     saveOnChange(outputsSettings, STORE, OUTPUTS_SETTINGS_KEY);
     saveOnChange(uiSettings, STORE, UI_SETTINGS_KEY);
     saveOnChange(applicationSettings, STORE, APPLICATION_SETTINGS_KEY);
+}
+
+export function resetVideoSettings(): void {
+    videoSettings.set(structuredClone(DEFAULT_VIDEO_SETTINGS));
+}
+
+export function resetInputsSettings(): void {
+    inputsSettings.set(structuredClone(DEFAULT_INPUTS_SETTINGS));
+}
+
+export function resetOutputsSettings(): void {
+    outputsSettings.set(structuredClone(DEFAULT_OUTPUTS_SETTINGS));
+}
+
+export function resetUISettings(): void {
+    uiSettings.set(structuredClone(DEFAULT_UI_SETTINGS));
+}
+
+export function resetApplicationSettings(): void {
+    applicationSettings.set(structuredClone(DEFAULT_APPLICATION_SETTINGS));
 }

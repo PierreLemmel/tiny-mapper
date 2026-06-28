@@ -7,8 +7,8 @@ import { parseUniforms } from "../../lib/rendering/compilation";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const VALID_DIR = join(__dirname, "shaders", "valid");
-const INVALID_DIR = join(__dirname, "shaders", "invalid");
+const VALID_DIR = join(__dirname, "shaders", "parse-uniforms", "valid");
+const INVALID_DIR = join(__dirname, "shaders", "parse-uniforms", "invalid");
 
 function loadShader(folder: string, name: string): string {
     return readFileSync(join(folder, name), "utf-8");
@@ -90,7 +90,7 @@ describe("parseUniforms - slider", () => {
 });
 
 describe("parseUniforms - timed", () => {
-    it("extracts a timed float uniform with timeScale and default", () => {
+    it("extracts a timed float uniform with explicit timeScale", () => {
         const shader = loadShader(VALID_DIR, "timed.frag");
         const result = parseUniforms(shader);
         expect(result.success).toBe(true);
@@ -102,12 +102,25 @@ describe("parseUniforms - timed", () => {
             description: undefined,
             type: "timed",
             timeScale: 1.0,
-            default: 0.0,
         });
     });
 
-    it("allows omitting the default value for timed uniforms", () => {
-        const shader = loadShader(VALID_DIR, "timed-no-default.frag");
+    it("accepts type-only timed metadata", () => {
+        const shader = loadShader(VALID_DIR, "timed-type-only.frag");
+        const result = parseUniforms(shader);
+        expect(result.success).toBe(true);
+        if (!result.success) return;
+        expect(result.uniforms).toHaveLength(1);
+        expect(result.uniforms[0]).toEqual({
+            key: "ticking",
+            label: "Ticking",
+            description: undefined,
+            type: "timed",
+        });
+    });
+
+    it("allows omitting min and max while specifying timeScale", () => {
+        const shader = loadShader(VALID_DIR, "timed-custom-timescale.frag");
         const result = parseUniforms(shader);
         expect(result.success).toBe(true);
         if (!result.success) return;
@@ -116,7 +129,8 @@ describe("parseUniforms - timed", () => {
         expect(uniform.type).toBe("timed");
         if (uniform.type !== "timed") return;
         expect(uniform.timeScale).toBe(0.5);
-        expect(uniform.default).toBeUndefined();
+        expect(uniform.min).toBeUndefined();
+        expect(uniform.max).toBeUndefined();
         expect(uniform.label).toBe("Clock");
     });
 
@@ -130,8 +144,8 @@ describe("parseUniforms - timed", () => {
         ).toBe(true);
     });
 
-    it("rejects missing timeScale", () => {
-        const shader = loadShader(INVALID_DIR, "timed-missing-timescale.frag");
+    it("rejects a non-numeric timeScale", () => {
+        const shader = loadShader(INVALID_DIR, "timed-bad-timescale.frag");
         const result = parseUniforms(shader);
         expect(result.success).toBe(false);
         if (result.success) return;
@@ -140,13 +154,13 @@ describe("parseUniforms - timed", () => {
         ).toBe(true);
     });
 
-    it("rejects a non-numeric default for timed", () => {
-        const shader = loadShader(INVALID_DIR, "timed-bad-default.frag");
+    it("rejects min greater than max", () => {
+        const shader = loadShader(INVALID_DIR, "timed-min-greater-than-max.frag");
         const result = parseUniforms(shader);
         expect(result.success).toBe(false);
         if (result.success) return;
         expect(
-            result.errors.some((e) => /'default' must be a finite number for timed/.test(e)),
+            result.errors.some((e) => /'min' .* must be <= 'max'/.test(e)),
         ).toBe(true);
     });
 });
@@ -370,5 +384,66 @@ describe("parseUniforms - error accumulation", () => {
         expect(result.success).toBe(false);
         if (result.success) return;
         expect(result.errors.some((e) => /failed to parse metadata/.test(e))).toBe(true);
+    });
+});
+
+describe("parseUniforms - duplicate uniforms", () => {
+    it("reports a single error per duplicated uniform name with all declaration lines", () => {
+        const shader = loadShader(INVALID_DIR, "duplicate-uniform.frag");
+        const result = parseUniforms(shader);
+        expect(result.success).toBe(false);
+        if (result.success) return;
+
+        const duplicateErrors = result.errors.filter((e) =>
+            /declared multiple times/.test(e),
+        );
+        expect(duplicateErrors).toHaveLength(1);
+        expect(duplicateErrors[0]).toMatch(/'intensity'/);
+        expect(duplicateErrors[0]).toMatch(/lines\s+\d+,\s+\d+/);
+    });
+
+    it("reports each distinct duplicated name independently", () => {
+        const shader = loadShader(INVALID_DIR, "multiple-duplicates.frag");
+        const result = parseUniforms(shader);
+        expect(result.success).toBe(false);
+        if (result.success) return;
+
+        const duplicateErrors = result.errors.filter((e) =>
+            /declared multiple times/.test(e),
+        );
+        expect(duplicateErrors).toHaveLength(2);
+        expect(duplicateErrors.some((e) => /'alpha'/.test(e))).toBe(true);
+        expect(duplicateErrors.some((e) => /'beta'/.test(e))).toBe(true);
+    });
+
+    it("does not emit per-uniform validation errors for duplicated names", () => {
+        const shader = loadShader(INVALID_DIR, "duplicate-uniform.frag");
+        const result = parseUniforms(shader);
+        expect(result.success).toBe(false);
+        if (result.success) return;
+        expect(
+            result.errors.every((e) => /declared multiple times/.test(e)),
+        ).toBe(true);
+    });
+
+    it("flags duplicates even when the redeclarations use different GLSL types", () => {
+        const shader = loadShader(
+            INVALID_DIR,
+            "duplicate-uniform-different-types.frag",
+        );
+        const result = parseUniforms(shader);
+        expect(result.success).toBe(false);
+        if (result.success) return;
+
+        const duplicateErrors = result.errors.filter((e) =>
+            /declared multiple times/.test(e),
+        );
+        expect(duplicateErrors).toHaveLength(1);
+        expect(duplicateErrors[0]).toMatch(/'sharedUniform'/);
+        expect(duplicateErrors[0]).toMatch(/lines\s+\d+,\s+\d+/);
+
+        expect(
+            result.errors.every((e) => /declared multiple times/.test(e)),
+        ).toBe(true);
     });
 });

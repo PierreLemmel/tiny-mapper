@@ -1,4 +1,4 @@
-// { type: "timed", timeScale: 0.5 }
+// { type: "timed", label: "Clock", timeScale: 0.5 }
 uniform float clock;
 
 void main() {

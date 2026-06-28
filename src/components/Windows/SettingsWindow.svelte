@@ -5,10 +5,11 @@
     import InputsSettings from "../Settings/InputsSettings.svelte";
     import OutputsSettings from "../Settings/OutputsSettings.svelte";
     import UISettings from "../Settings/UISettings.svelte";
+    import ApplicationSettings from "../Settings/ApplicationSettings.svelte";
 
     export let className: string | undefined = undefined;
 
-    const TABS = ["Video", "Inputs", "Outputs", "UI"];
+    const TABS = ["Application", "Video", "Inputs", "Outputs", "UI"];
     let activeTab = 0;
 </script>
 
@@ -19,12 +20,14 @@
 
     <div class="flex-1 overflow-auto">
         {#if activeTab === 0}
-            <VideoSettings />
+            <ApplicationSettings />
         {:else if activeTab === 1}
-            <InputsSettings />
+            <VideoSettings />
         {:else if activeTab === 2}
-            <OutputsSettings />
+            <InputsSettings />
         {:else if activeTab === 3}
+            <OutputsSettings />
+        {:else if activeTab === 4}
             <UISettings />
         {/if}
     </div>

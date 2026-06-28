@@ -1,11 +1,14 @@
 import { get, type Writable } from "svelte/store";
-import type {
-    MaterialTemplate,
+import {
+    clampValueForUniform,
+    isValueOkForUniform,
+    type MaterialTemplate,
 } from "../logic/material-templates/material-templates";
 import { compilationScene, mainRenderer } from "../stores/rendering";
 import { log } from "../logging/logger";
 import { colorRepresentationToRawColor, type RawColor } from "../core/color";
-import type { MaterialTemplateUniform } from "../logic/material-templates/uniforms";
+import type { MaterialTemplateUniform, MaterialTemplateUniformsValues } from "../logic/material-templates/uniforms";
+import { findDuplicates } from "../core/utils";
 
 export type ParseUniformsResult = {
     success: true;
@@ -30,6 +33,20 @@ export function parseUniforms(shader: string): ParseUniformsResult {
     const uniforms: MaterialTemplateUniform[] = [];
     const errors: string[] = [];
 
+    const uniformItems = items.filter(
+        (item): item is Extract<ShaderItem, { kind: "uniform" }> =>
+            item.kind === "uniform",
+    );
+    const duplicateGroups = findDuplicates(uniformItems, (item) => item.name);
+    const duplicateNames = new Set<string>();
+    for (const group of duplicateGroups) {
+        const lines = group.items.map((i) => i.line).join(", ");
+        errors.push(
+            `Uniform '${group.key}' is declared multiple times (lines ${lines})`,
+        );
+        duplicateNames.add(group.key);
+    }
+
     let pendingMeta: { text: string; line: number } | null = null;
 
     for (const item of items) {
@@ -39,6 +56,11 @@ export function parseUniforms(shader: string): ParseUniformsResult {
         }
 
         if (!pendingMeta) {
+            continue;
+        }
+
+        if (duplicateNames.has(item.name)) {
+            pendingMeta = null;
             continue;
         }
 
@@ -249,20 +271,33 @@ function buildUniform(
                     `${prefix}: type 'timed' requires GLSL type 'float', got '${glslType}'`,
                 );
             }
-            const timeScale = meta.timeScale;
-            if (typeof timeScale !== "number" || !Number.isFinite(timeScale)) {
+            const hasTimeScale = "timeScale" in meta;
+            const timeScaleRaw = meta.timeScale;
+            if (
+                hasTimeScale &&
+                (typeof timeScaleRaw !== "number" || !Number.isFinite(timeScaleRaw))
+            ) {
                 errors.push(
                     `${prefix}: 'timeScale' must be a finite number for timed`,
                 );
             }
-            const hasDefault = "default" in meta;
-            const def = meta.default;
-            if (
-                hasDefault &&
-                (typeof def !== "number" || !Number.isFinite(def))
-            ) {
+            const hasMin = "min" in meta;
+            const minRaw = meta.min;
+            if (hasMin && (typeof minRaw !== "number" || !Number.isFinite(minRaw))) {
+                errors.push(`${prefix}: 'min' must be a finite number for timed`);
+            }
+            const hasMax = "max" in meta;
+            const maxRaw = meta.max;
+            if (hasMax && (typeof maxRaw !== "number" || !Number.isFinite(maxRaw))) {
+                errors.push(`${prefix}: 'max' must be a finite number for timed`);
+            }
+            if (errors.length > 0) return { errors };
+
+            const resolvedMin = hasMin ? (minRaw as number) : 0;
+            const resolvedMax = hasMax ? (maxRaw as number) : 4;
+            if (resolvedMin > resolvedMax) {
                 errors.push(
-                    `${prefix}: 'default' must be a finite number for timed`,
+                    `${prefix}: 'min' (${resolvedMin}) must be <= 'max' (${resolvedMax})`,
                 );
             }
             if (errors.length > 0) return { errors };
@@ -270,8 +305,9 @@ function buildUniform(
                 uniform: {
                     ...base,
                     type: "timed",
-                    timeScale: timeScale as number,
-                    ...(hasDefault ? { default: def as number } : {}),
+                    ...(hasTimeScale ? { timeScale: timeScaleRaw as number } : {}),
+                    ...(hasMin ? { min: minRaw as number } : {}),
+                    ...(hasMax ? { max: maxRaw as number } : {}),
                 },
                 errors: [],
             };
@@ -482,6 +518,16 @@ function capitalize(s: string): string {
     return s.length > 0 ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
+function getDefaultPreviewValue(uniform: MaterialTemplateUniform): unknown {
+    switch (uniform.type) {
+        case "timed":
+            return 0;
+        default:
+            return uniform.default;
+    }
+}
+
+
 export async function compileTemplate(store: Writable<MaterialTemplate>): Promise<CompileTemplateResult> {
     const template = get(store);
 
@@ -497,30 +543,81 @@ export async function compileTemplate(store: Writable<MaterialTemplate>): Promis
         }
     }
 
-    const result = await cs.compile(template.vertexShaderEditValue, template.fragmentShaderEditValue);
+    const puvResult = parseUniforms(template.vertexShaderEditValue);
+    const pufResult = parseUniforms(template.fragmentShaderEditValue);
+
+    const compileResult = await cs.compile(template.vertexShaderEditValue, template.fragmentShaderEditValue);
 
 
     const updatedTemplate: MaterialTemplate = structuredClone(template);
 
-    if (result.success) {
+    if (compileResult.success && puvResult.success && pufResult.success) {
         updatedTemplate.hasErrors = false;
         updatedTemplate.vertexShaderErrors = null;
         updatedTemplate.fragmentShaderErrors = null;
         
         updatedTemplate.vertexShader = template.vertexShaderEditValue;
         updatedTemplate.fragmentShader = template.fragmentShaderEditValue;
+
+        const oldValues = template.uniformsPreviewValues;
+        const newValues: MaterialTemplateUniformsValues = {};
+
+        const newUniforms: MaterialTemplateUniform[] = [
+            ...puvResult.uniforms,
+            ...pufResult.uniforms,
+        ];
+
+        for (const uniform of newUniforms) {
+            if (uniform.key in oldValues) {
+                const oldValue = oldValues[uniform.key].value;
+
+                if (isValueOkForUniform(oldValue, uniform)) {
+                    newValues[uniform.key] = { value: clampValueForUniform(oldValue, uniform) };
+                }
+                else {
+                    newValues[uniform.key] = { value: getDefaultPreviewValue(uniform) };
+                }
+            }
+            else {
+                newValues[uniform.key] = { value: getDefaultPreviewValue(uniform) };
+            }
+        }
+    
+        updatedTemplate.uniforms = newUniforms;
+        updatedTemplate.uniformsPreviewValues = newValues;
     }
     else {
         updatedTemplate.hasErrors = true;
-        const { fragmentShaderErrors, vertexShaderErrors } = result;
 
-        updatedTemplate.vertexShaderErrors = vertexShaderErrors;
-        updatedTemplate.fragmentShaderErrors = fragmentShaderErrors;
+        const vertexShaderErrors = []
+        const fragmentShaderErrors = []
+
+        if (!pufResult.success) {
+            fragmentShaderErrors.push(...pufResult.errors);
+        }
+
+        if (!puvResult.success) {
+            vertexShaderErrors.push(...puvResult.errors);
+        }
+        
+        if (!compileResult.success) {
+            if (compileResult.vertexShaderErrors) {
+                vertexShaderErrors.push(...compileResult.vertexShaderErrors);
+            }
+            if (compileResult.fragmentShaderErrors) {
+                fragmentShaderErrors.push(...compileResult.fragmentShaderErrors);
+            }
+        }
+
+        updatedTemplate.vertexShaderErrors = vertexShaderErrors.length > 0 ? vertexShaderErrors : null;
+        updatedTemplate.fragmentShaderErrors = fragmentShaderErrors.length > 0 ? fragmentShaderErrors : null;
     }
 
-    store.set(updatedTemplate);
+    
 
-    return result;
+    store.set(updatedTemplate);
+    
+    return compileResult;
 }
 
 export function splitShaderErrors(errors: string | null): string[] | null {

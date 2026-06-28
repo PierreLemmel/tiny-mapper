@@ -1,10 +1,12 @@
 import * as THREE from "three";
 import { materialTemplateStore } from "../stores/material-templates";
 import type { MaterialTemplate } from "../logic/material-templates/material-templates";
+import { clampValueForUniform } from "../logic/material-templates/material-templates";
 
 import defaultVertexShader from "../../shaders/default-material-template.vert?raw";
 import defaultFragmentShader from "../../shaders/default-material-template.frag?raw";
 import { log } from "../logging/logger";
+import { ticker } from "../core/ticker";
 
 export class MaterialTemplatePreviewScene {
 
@@ -18,7 +20,8 @@ export class MaterialTemplatePreviewScene {
     private quad: THREE.Mesh;
     private material: THREE.ShaderMaterial;
 
-    private unsubscribes: (() => void)[] = [];
+    private materialUnsubscribe: (() => void) | null = null;
+    private tickerUnsubscribe: (() => void) | null = null;
     
     public get content(): THREE.Scene {
         return this.scene;
@@ -26,10 +29,10 @@ export class MaterialTemplatePreviewScene {
 
     public targetTemplate(id: string) {
 
-        for (const unsubscribe of this.unsubscribes) {
-            unsubscribe();
+        if (this.materialUnsubscribe) {
+            this.materialUnsubscribe();
+            this.materialUnsubscribe = null;
         }
-        this.unsubscribes = [];
 
         const store = materialTemplateStore(id);
         if (!store) {
@@ -37,10 +40,9 @@ export class MaterialTemplatePreviewScene {
             return;
         }
         
-        const unsubscribe = store.subscribe(template => {
+        this.materialUnsubscribe = store.subscribe(template => {
             this.updateMaterial(template);
         });
-        this.unsubscribes.push(unsubscribe);
     }
 
     public resize(width: number, height: number) {
@@ -92,14 +94,40 @@ export class MaterialTemplatePreviewScene {
     private updateMaterial(template: MaterialTemplate) {
         this.material.vertexShader = template.vertexShader;
         this.material.fragmentShader = template.fragmentShader;
+        this.material.uniforms = template.uniformsPreviewValues;
         this.material.needsUpdate = true;
+
+        this.subscribeToTimedUniformsIfNeeded(template);
+    }
+
+    private subscribeToTimedUniformsIfNeeded(template: MaterialTemplate) {
+        if (this.tickerUnsubscribe) {
+            this.tickerUnsubscribe();
+        }
+
+        const timedUniforms = template.uniforms.filter(uniform => uniform.type === "timed");
+        if (timedUniforms.length > 0) {
+            this.tickerUnsubscribe = ticker.addListener((props) => {
+                timedUniforms.forEach(uniform => {
+                    const oldValue = template.uniformsPreviewValues[uniform.key]?.value ?? 0;
+                    const value = oldValue + props.deltaTime * (uniform.timeScale ?? 1);
+
+                    template.uniformsPreviewValues[uniform.key] = { value };
+                });
+
+                this.material.needsUpdate = true;
+            });
+        }
+        else {
+            this.tickerUnsubscribe = null;
+        }
     }
 
     public dispose() {
-        for (const unsubscribe of this.unsubscribes) {
-            unsubscribe();
+        if (this.materialUnsubscribe) {
+            this.materialUnsubscribe();
+            this.materialUnsubscribe = null;
         }
-        this.unsubscribes = [];
         this.scene.clear();
     }
 }

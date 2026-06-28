@@ -21,6 +21,7 @@
             basicSetup,
             glsl(),
             vsCodeDark,
+            EditorView.lineWrapping,
             keymap.of(keymaps),
             EditorView.updateListener.of((update) => {
                 if (update.docChanged) {

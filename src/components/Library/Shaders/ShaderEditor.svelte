@@ -1,12 +1,10 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import NameDisplay from "../../Shared/NameDisplay.svelte";
     import Button from "../../Shared/Button.svelte";
     import PlayIcon from "../../../icons/PlayIcon.svelte";
     import TabPanel from "../../Shared/TabPanel.svelte";
     import CodeEditor from "../../Code/CodeEditor.svelte";
-    import ShaderPreview from "./ShaderPreview.svelte";
-    import { eventStore } from "../../../lib/events/event-store";
+    import ShaderSettingsPanel from "./ShaderSettingsPanel.svelte";
     import { materialTemplateStore } from "../../../lib/stores/material-templates";
     import ErrorDisplay from "../../Code/ErrorDisplay.svelte";
     import SplitPanels from "../../Shared/SplitPanels.svelte";
@@ -47,15 +45,15 @@
         },
     ];
 
-    function getAllErrors(template: MaterialTemplate) {
+    function getAllErrors(template: MaterialTemplate, compilationError: string | null) {
         const errors: {
             category: string;
             errors: string[];
         }[] = [];
-        if ($compilationError) {
+        if (compilationError) {
             errors.push({
                 category: "Compilation",
-                errors: [$compilationError],
+                errors: [compilationError],
             });
         }
         if (template.vertexShaderErrors) {
@@ -72,12 +70,21 @@
         }
         return errors;
     }
-    $: errors = getAllErrors($template);
+    $: errors = getAllErrors($template, compilationError);
     
     async function onCompile() {
         isCompiling = true;
+
         try {
-            const result = await compileTemplate(template);
+            const ct = await compileTemplate(template);
+            if (!ct.success) {
+                if (ct.compilationErrors) {
+                    compilationError = ct.compilationErrors[0];
+                }
+            }
+            else {
+                compilationError = null;
+            }
         }
         catch (error) {
             compilationError = error as string;
@@ -124,78 +131,73 @@
 </script>
 
 <div class="contents" use:inputContext={InputContexts.ShaderEditor}>
-<div class="flex flex-row items-center justify-between px-4 py-2.5 shrink-0 gap-4">
-    <NameDisplay
-        className="text-neutral-200"
-        bind:value={$template.name}
-        onCommit={(oldVal, newVal) => {
-            eventStore.push({
-                category: "MaterialTemplate",
-                type: "NameChanged",
-                forwardData: { templateId: templateId, name: newVal },
-                backwardData: { templateId: templateId, name: oldVal },
-            });
-        }}
-    />
-    <Button variant="primary" onClick={onCompile} disabled={!canCompile}>
-        <div class="flex flex-row items-center justify-center gap-1.5">
-            {#if isCompiling}
-                <span class="uppercase tracking-wider text-[0.75rem] font-medium">Compiling...</span>
-            {:else}
-                <span class="uppercase tracking-wider text-[0.75rem] font-medium">Compile</span>
-                <PlayIcon className="size-4 shrink-0" />
-            {/if}
-        </div>
-    </Button>
-
-</div>
-<div class="w-1/2">
+<SplitPanels
+    direction="horizontal"
+    applySizeTo="second"
+    bind:size={$libraryUI.shaders.settingsPanelSize}
+    minSize={180} maxSize={300}
+    className="w-full h-full flex-1 min-h-0"
+>
     <TabPanel
+        slot="first"
         tabs={[
             fragmentDecoratedTabText,
             vertexDecoratedTabText,
         ]}
         bind:activeTab={activeShaderTab}
-        className="flex-0"
-    />
-</div>
-
-
-<SplitPanels
-    direction="vertical"
-    applySizeTo="second"
-    bind:size={$libraryUI.shaders.errorsPanelSize}
-    minSize={20} maxSize={300}
-    className="w-full h-full flex-1"
->
-    <div
-        class={cn(
-            "overflow-auto min-h-0",
-            "w-full h-full relative"
-        )}
-        slot="first"
+        className="h-full w-full"
     >
-        {#if activeShaderTab === 0}
-            <CodeEditor
-                className="h-full w-full rounded-none"
-                bind:value={$template.fragmentShaderEditValue}
-                onValueChange={() => fragmentModified = true}
-                keymaps={compileKeymap}
-            />
-        {:else}
-            <CodeEditor
-                className="h-full w-full"
-                bind:value={$template.vertexShaderEditValue}
-                onValueChange={() => vertexModified = true}
-                keymaps={compileKeymap}
-            />
-        {/if}
+        <svelte:fragment slot="actions">
+            <Button variant="primary" onClick={onCompile} disabled={!canCompile}>
+                <div class="flex flex-row items-center justify-center gap-1.5">
+                    {#if isCompiling}
+                        <span class="uppercase tracking-wider text-[0.75rem] font-medium">Compiling...</span>
+                    {:else}
+                        <span class="uppercase tracking-wider text-[0.75rem] font-medium">Compile</span>
+                        <PlayIcon className="size-4 shrink-0" />
+                    {/if}
+                </div>
+            </Button>
+        </svelte:fragment>
 
-        <ShaderPreview
-            className="absolute bottom-6 right-6 z-10"
-            templateId={templateId}
-        />
-    </div>
-    <ErrorDisplay errors={errors} slot="second" className="w-full h-full" successMessage={hasBeenCompiled ? "✅ Compiled successfully" : "No errors"} />
+        <SplitPanels
+            direction="vertical"
+            applySizeTo="second"
+            bind:size={$libraryUI.shaders.errorsPanelSize}
+            minSize={20} maxSize={300}
+            className="w-full h-full"
+        >
+            <div
+                class={cn(
+                    "overflow-auto min-h-0",
+                    "w-full h-full"
+                )}
+                slot="first"
+            >
+                {#if activeShaderTab === 0}
+                    <CodeEditor
+                        className="h-full w-full rounded-none"
+                        bind:value={$template.fragmentShaderEditValue}
+                        onValueChange={() => fragmentModified = true}
+                        keymaps={compileKeymap}
+                    />
+                {:else}
+                    <CodeEditor
+                        className="h-full w-full"
+                        bind:value={$template.vertexShaderEditValue}
+                        onValueChange={() => vertexModified = true}
+                        keymaps={compileKeymap}
+                    />
+                {/if}
+            </div>
+            <ErrorDisplay errors={errors} slot="second" className="w-full h-full" successMessage={hasBeenCompiled ? "✅ Compiled successfully" : "No errors"} />
+        </SplitPanels>
+    </TabPanel>
+
+    <ShaderSettingsPanel
+        slot="second"
+        className="w-full h-full"
+        templateId={templateId}
+    />
 </SplitPanels>
 </div>

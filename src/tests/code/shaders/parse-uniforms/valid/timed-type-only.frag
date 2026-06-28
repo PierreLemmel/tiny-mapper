@@ -1,4 +1,4 @@
-// { type: "timed", default: 0.0 }
+// { type: "timed", label: "Ticking" }
 uniform float ticking;
 
 void main() {

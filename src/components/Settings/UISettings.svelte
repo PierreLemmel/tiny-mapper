@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { uiSettings } from "../../lib/stores/settings";
+    import { resetUISettings, uiSettings } from "../../lib/stores/settings";
     import Slider from "../Shared/Slider.svelte";
+    import SettingsPanelReset from "./SettingsPanelReset.svelte";
 </script>
 
 <div class="p-4 flex flex-col gap-4">
@@ -14,4 +15,5 @@
             step: 0.1,
         }}
     />
+    <SettingsPanelReset onReset={resetUISettings} />
 </div>

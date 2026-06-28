@@ -41,6 +41,30 @@ export function registerMaterialTemplatesEventHandlers() {
     );
 
     registerMaterialTemplatePropertyHandler(
+        "author",
+        (data) => applyMaterialTemplateProperty(data),
+        (data) => applyMaterialTemplateProperty(data)
+    );
+
+    registerMaterialTemplatePropertyHandler(
+        "description",
+        (data) => applyMaterialTemplateProperty(data),
+        (data) => applyMaterialTemplateProperty(data)
+    );
+
+    registerMaterialTemplatePropertyHandler(
+        "tags",
+        (data) => applyMaterialTemplateProperty(data),
+        (data) => applyMaterialTemplateProperty(data)
+    );
+
+    registerMaterialTemplatePropertyHandler(
+        "uniformsPreviewValues",
+        (data) => applyMaterialTemplateProperty(data),
+        (data) => applyMaterialTemplateProperty(data)
+    );
+
+    registerMaterialTemplatePropertyHandler(
         "type",
         (data) => applyMaterialTemplateProperty(data),
         (data) => applyMaterialTemplateProperty(data)

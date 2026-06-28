@@ -18,6 +18,7 @@
     import LoadingWindow from "./components/Windows/LoadingWindow.svelte";
     import { registerGlobalHandlers, unregisterGlobalHandlers } from "./lib/ui/inputs/global-handlers";
     import RenderingContext from "./components/Rendering/RenderingContext.svelte";
+    import { initializeGlobalTicker, ticker } from "./lib/core/ticker";
 
     onMount(async () => {
         await initMaterialTemplatesStores();
@@ -29,9 +30,11 @@
             initSettingsStores(),
         ]);
         registerAllEventHandlers();
+        initializeGlobalTicker();
 
         (window as any).eventStore = eventStore;
         (window as any).inputManager = inputManager;
+        (window as any).ticker = ticker;
 
         application.update(state => ({ ...state, loaded: true }));
 

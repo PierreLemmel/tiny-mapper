@@ -99,7 +99,16 @@ export type LibraryUIData = {
         activeShaderTab: 0 | 1
         leftPanelSize: number
         errorsPanelSize: number
-        previewCollapsed: boolean
+        settingsPanelSize: number
+        baseProperties: {
+            open: boolean
+        }
+        preview: {
+            open: boolean
+        }
+        testValues: {
+            open: boolean
+        }
     }
 }
 
@@ -179,7 +188,16 @@ const DEFAULT_LIBRARY_UI_DATA: LibraryUIData = {
         activeShaderTab: 0,
         leftPanelSize: 300,
         errorsPanelSize: 100,
-        previewCollapsed: false,
+        settingsPanelSize: 280,
+        baseProperties: {
+            open: true,
+        },
+        preview: {
+            open: true,
+        },
+        testValues: {
+            open: false,
+        },
     },
 }
 

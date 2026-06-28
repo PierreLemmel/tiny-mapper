@@ -16,6 +16,7 @@
         max: number;
         step?: number;
         unit?: string;
+        precision?: number;
     }
 
     $: min = options.type === 'percentage' ? 0 : options.min;
@@ -27,7 +28,7 @@
     $: displayValue = options.type === 'percentage' ? 100 * value : value;
     $: displayValueStr = options.type === 'percentage' ? displayValue.toFixed(options.precision ?? 1) : (Number.isInteger(displayValue) && Number.isInteger(step)
         ? displayValue.toString()
-        : displayValue.toFixed(1));
+        : displayValue.toFixed(options.precision ?? 1));
 
     let commitStartValue: number | undefined;
 </script>
